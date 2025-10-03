@@ -617,13 +617,18 @@
             }
             
             try {
-                // Use wallet_connect method instead of getAddresses
+                // Use wallet_connect method
                 const response = await provider.request('wallet_connect', null);
                 
                 console.log('Xverse response:', response);
                 
-                if (response.status === 'success') {
+                if (response.result && response.result.addresses) {
                     const addresses = response.result.addresses;
+                    
+                    // Log all addresses to see what we have
+                    console.log('All addresses:', addresses);
+                    
+                    // Find the specific address types
                     const ordAddress = addresses.find(a => a.purpose === 'ordinals');
                     const payAddress = addresses.find(a => a.purpose === 'payment');
                     
@@ -638,19 +643,28 @@
                         };
                         
                         onWalletConnected();
+                    } else {
+                        // If no ordinals address, use the first address
+                        const firstAddress = addresses[0];
+                        connectedWallet = {
+                            type: 'xverse',
+                            ordinalsAddress: firstAddress.address,
+                            paymentAddress: firstAddress.address,
+                            ordPub: firstAddress.publicKey || '',
+                            payPub: firstAddress.publicKey || '',
+                            provider: provider
+                        };
+                        
+                        onWalletConnected();
                     }
                 }
             } catch (error) {
                 console.error('Xverse error:', error);
-                if (error.code === -32002 || error.error?.code === -32002) {
-                    showError('Connection denied. Please approve the connection in Xverse.');
-                } else {
-                    showError('Failed to connect Xverse');
-                }
+                showError('Failed to connect Xverse');
             }
         }
-        
-        async function connectMagicEden() {
+                
+               async function connectMagicEden() {
             const provider = window.magicEden?.bitcoin;
             
             if (!provider) {
