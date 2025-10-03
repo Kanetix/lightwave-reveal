@@ -591,7 +591,6 @@
         function showWalletSelection() {
             const wallets = detectWallets();
             
-            // Check if any wallet is installed
             const hasAnyWallet = Object.values(wallets).some(v => v);
             
             if (!hasAnyWallet) {
@@ -621,58 +620,90 @@
             
             try {
                 const response = await xverseProvider.request('getAddresses', {
-                    purposes: ['ordinals', 'payment'],
-                    message: 'Connect to Light Waves Reveals'
+                    params: {
+                        purposes: ['ordinals', 'payment'],
+                        message: 'Connect to Light Waves Reveals'
+                    }
                 });
                 
                 console.log('Xverse response:', response);
                 
-                if (response && response.result) {
-                    const addresses = response.result.addresses || response.result;
+                if (response.result) {
+                    const addresses = response.result;
+                    const ordAddress = addresses.find(a => a.purpose === 'ordinals');
+                    const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
                     
-                    if (Array.isArray(addresses) && addresses.length > 0) {
-                        const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-                        const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
-                        
+                    if (ordAddress) {
                         connectedWallet = {
                             type: 'xverse',
                             ordinalsAddress: ordAddress.address,
-                            paymentAddress: payAddress.address || ordAddress.address,
+                            paymentAddress: payAddress ? payAddress.address : ordAddress.address,
                             ordPub: ordAddress.publicKey || '',
-                            payPub: payAddress.publicKey || ordAddress.publicKey || '',
+                            payPub: payAddress ? payAddress.publicKey : ordAddress.publicKey || '',
                             provider: xverseProvider
                         };
                         
                         onWalletConnected();
+                    } else {
+                        throw new Error('No ordinals address found');
                     }
-                } else if (response && response.status === 'success') {
-                    // Handle legacy response format
-                    const addresses = response.addresses;
-                    const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-                    const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
+                }
+            } catch (error) {
+                console.error('Xverse error:', error);
+                showError('Failed to connect Xverse. Please make sure the wallet is unlocked and try again.');
+            }
+        }
+        
+        async function connectMagicEden() {
+            if (!window.magicEden?.bitcoin) {
+                showError('Magic Eden wallet not detected');
+                return;
+            }
+            
+            try {
+                const provider = window.magicEden.bitcoin;
+                
+                if (!provider.isConnected || !provider.isConnected()) {
+                    await provider.connect();
+                }
+                
+                let address;
+                
+                if (provider.selectedAddress) {
+                    address = provider.selectedAddress;
+                } else if (provider.accounts && provider.accounts.length > 0) {
+                    address = provider.accounts[0];
+                } else if (provider.getSelectedAddress) {
+                    address = await provider.getSelectedAddress();
+                } else {
+                    // Fallback: try to get accounts
+                    const accounts = await provider.request({
+                        method: 'getAccounts',
+                        params: []
+                    });
                     
+                    if (accounts && accounts.length > 0) {
+                        address = accounts[0];
+                    }
+                }
+                
+                if (address) {
                     connectedWallet = {
-                        type: 'xverse',
-                        ordinalsAddress: ordAddress.address,
-                        paymentAddress: payAddress.address || ordAddress.address,
-                        ordPub: ordAddress.publicKey || '',
-                        payPub: payAddress.publicKey || ordAddress.publicKey || '',
-                        provider: xverseProvider
+                        type: 'magiceden',
+                        ordinalsAddress: address,
+                        paymentAddress: address,
+                        ordPub: '',
+                        payPub: '',
+                        provider: provider
                     };
                     
                     onWalletConnected();
                 } else {
-                    throw new Error('Invalid response format');
+                    throw new Error('No address found');
                 }
             } catch (error) {
-                console.error('Xverse error details:', error);
-                
-                // If the user hasn't authorized the site yet, they might need to do that first
-                if (error.code === 4001 || error.message?.includes('User denied')) {
-                    showError('Please authorize this site in your Xverse wallet');
-                } else {
-                    showError('Failed to connect Xverse. Make sure the wallet is unlocked.');
-                }
+                console.error('Magic Eden error:', error);
+                showError('Failed to connect Magic Eden. Please ensure you are logged into the wallet extension.');
             }
         }
 
@@ -740,63 +771,6 @@
                     showError('Connection cancelled');
                 } else {
                     showError('Connection failed');
-                }
-            }
-        }
-
-        async function connectMagicEden() {
-            if (!window.magicEden?.bitcoin) {
-                showError('Magic Eden wallet not detected');
-                return;
-            }
-            
-            try {
-                const provider = window.magicEden.bitcoin;
-                
-                // Magic Eden expects a specific format
-                const accounts = await provider.requestAccounts();
-                
-                console.log('Magic Eden accounts:', accounts);
-                
-                if (accounts && accounts.length > 0) {
-                    // Magic Eden returns a simple array of addresses
-                    const address = accounts[0];
-                    
-                    connectedWallet = {
-                        type: 'magiceden',
-                        ordinalsAddress: address,
-                        paymentAddress: address,
-                        ordPub: '', // Magic Eden might not provide public keys
-                        payPub: '',
-                        provider: provider
-                    };
-                    
-                    onWalletConnected();
-                }
-            } catch (error) {
-                console.error('Magic Eden error:', error);
-                
-                // Try alternative method
-                try {
-                    if (window.magicEden.bitcoin.isConnected && !window.magicEden.bitcoin.isConnected()) {
-                        await window.magicEden.bitcoin.connect();
-                    }
-                    
-                    const accounts = await window.magicEden.bitcoin.requestAccounts();
-                    if (accounts && accounts.length > 0) {
-                        connectedWallet = {
-                            type: 'magiceden',
-                            ordinalsAddress: accounts[0],
-                            paymentAddress: accounts[0],
-                            ordPub: '',
-                            payPub: '',
-                            provider: window.magicEden.bitcoin
-                        };
-                        
-                        onWalletConnected();
-                    }
-                } catch (retryError) {
-                    showError('Failed to connect Magic Eden. Please make sure you are logged in.');
                 }
             }
         }
