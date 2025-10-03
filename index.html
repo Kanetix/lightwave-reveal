@@ -491,6 +491,7 @@
         })();
 
         // Simple JWT-like token creator (simplified version of jsontokens)
+        // This may be needed for other MagicEden operations like signing
         function createUnsecuredToken(payload) {
             const header = { typ: 'JWT', alg: 'none' };
             const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '');
@@ -716,7 +717,7 @@
             }
         }
 
-        // FIX 2: Direct MagicEden connection without SatsConnect dependency
+        // FIX 2: Direct MagicEden connection using createUnsecuredToken
         async function connectMagicEden() {
             try {
                 const provider = window.magicEden?.bitcoin;
@@ -725,66 +726,79 @@
                     return;
                 }
 
-                console.log('Connecting to MagicEden directly...');
+                console.log('Connecting to MagicEden...');
 
-                // Method 1: Try using direct provider request (as documented)
+                // Create the payload for connection
+                const payload = {
+                    purposes: ['payment', 'ordinals'],
+                    message: 'Light Waves: connect for reveal'
+                };
+                
+                // Create unsigned token as per MagicEden docs
+                const request = createUnsecuredToken(payload);
+                
+                console.log('Sending connect request to MagicEden provider...');
+                
                 try {
-                    // Create the payload for connection
-                    const payload = {
-                        purposes: ['payment', 'ordinals'],
-                        message: 'Light Waves: connect for reveal'
-                    };
-                    
-                    // Create unsigned token as per MagicEden docs
-                    const request = createUnsecuredToken(payload);
-                    
-                    console.log('Sending connect request to MagicEden provider...');
-                    
-                    // Try the direct provider method
+                    // This triggers the popup, but might handle response differently
                     const response = await provider.connect(request);
                     
-                    if (response && response.addresses) {
-                        handleMagicEdenResponse(response.addresses);
-                        return;
+                    console.log('MagicEden response:', response);
+                    
+                    // MagicEden might return addresses in different formats
+                    if (response) {
+                        if (response.addresses) {
+                            handleMagicEdenResponse(response.addresses);
+                        } else if (Array.isArray(response)) {
+                            handleMagicEdenResponse(response);
+                        } else if (response.address) {
+                            // Single address response
+                            handleMagicEdenResponse([response]);
+                        } else {
+                            // Try to get addresses another way after successful connect
+                            console.log('Connected but no addresses in response, trying to get accounts...');
+                            // MagicEden might expose addresses differently after connection
+                            if (provider.accounts || provider.selectedAddress) {
+                                const addresses = [{
+                                    address: provider.selectedAddress || provider.accounts[0],
+                                    purpose: 'ordinals'
+                                }];
+                                handleMagicEdenResponse(addresses);
+                            } else {
+                                console.error('Unexpected response format:', response);
+                                showError('Connected but could not retrieve addresses');
+                            }
+                        }
                     }
-                } catch (e1) {
-                    console.log('Method 1 failed, trying alternative method...', e1);
-                }
-
-                // Method 2: Try wallet_connect like other wallets
-                try {
-                    const resp = await provider.request('wallet_connect', {
-                        addresses: ['ordinals', 'payment'],
-                        network: 'Mainnet',
-                        message: 'Light Waves: connect for reveal'
-                    });
-
-                    if (resp?.result?.addresses?.length) {
-                        handleMagicEdenResponse(resp.result.addresses);
-                        return;
+                } catch (error) {
+                    // Check if it's a user rejection
+                    if (error.message && error.message.includes('rejected')) {
+                        showError('Connection cancelled by user');
+                    } else {
+                        // Log the error but don't assume failure - check if we're actually connected
+                        console.log('Connection method threw error but checking connection status:', error);
+                        
+                        // Sometimes providers throw errors but still connect
+                        // Check if we can access addresses despite the error
+                        if (provider.accounts && provider.accounts.length > 0) {
+                            console.log('Despite error, found accounts:', provider.accounts);
+                            const addresses = provider.accounts.map(acc => ({
+                                address: typeof acc === 'string' ? acc : acc.address,
+                                purpose: 'ordinals'
+                            }));
+                            handleMagicEdenResponse(addresses);
+                        } else if (provider.selectedAddress) {
+                            console.log('Despite error, found selectedAddress:', provider.selectedAddress);
+                            handleMagicEdenResponse([{
+                                address: provider.selectedAddress,
+                                purpose: 'ordinals'
+                            }]);
+                        } else {
+                            console.error('MagicEden connection error:', error);
+                            showError('Failed to connect Magic Eden wallet');
+                        }
                     }
-                } catch (e2) {
-                    console.log('Method 2 failed, trying getAccounts...', e2);
                 }
-
-                // Method 3: Try getAccounts method
-                try {
-                    const accounts = await provider.getAccounts();
-                    if (accounts && accounts.length > 0) {
-                        const addresses = accounts.map(acc => ({
-                            address: acc.address,
-                            purpose: acc.purpose || 'ordinals',
-                            publicKey: acc.publicKey
-                        }));
-                        handleMagicEdenResponse(addresses);
-                        return;
-                    }
-                } catch (e3) {
-                    console.log('Method 3 failed', e3);
-                }
-
-                // If all methods fail, show error
-                showError('Failed to connect to Magic Eden wallet. Please try refreshing the page and ensure the wallet is unlocked.');
                 
             } catch (err) {
                 console.error('MagicEden error:', err);
