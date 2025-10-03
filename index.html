@@ -471,9 +471,18 @@
     </div>
 
     <script>
-        if (window.top !== window.self) {
-            window.top.location = window.self.location;
-        }
+        (function () {
+          const isEmbedded = window.top !== window.self;
+          const ref = document.referrer || '';
+          const allowHosts = [
+            'kanetix.io/lights-waves-reveal.io'
+          ];
+          const allowed = allowHosts.some(h => ref.includes(h));
+        
+          if (isEmbedded && !allowed) {
+            try { window.top.location = window.location; } catch (e) {}
+          }
+        })();
 
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
         const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
