@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Light Wave Reveal</title>
+    <title>Light Waves Reveals</title>
     <style>
         * {
             margin: 0;
@@ -25,87 +25,23 @@
             padding: 20px;
         }
         
-        /* Hero Section */
-        .hero-section {
+        /* Title Section - No background box */
+        .title-section {
             text-align: center;
-            padding: 60px 20px;
-            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-            border-radius: 20px;
-            margin-bottom: 40px;
-            position: relative;
-            overflow: hidden;
+            padding: 60px 20px 40px;
         }
         
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-            animation: pulse 4s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.3; }
-        }
-        
-        .hero-title {
-            font-size: 48px;
+        .main-title {
+            font-size: 64px;
             font-weight: 700;
             margin-bottom: 20px;
             background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            position: relative;
-            z-index: 1;
+            letter-spacing: -1px;
         }
         
-        .hero-subtitle {
-            font-size: 20px;
-            color: #999;
-            margin-bottom: 40px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* Info Cards */
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        
-        .info-card {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
-            padding: 24px;
-            transition: all 0.3s;
-        }
-        
-        .info-card:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
-            transform: translateY(-2px);
-        }
-        
-        .info-card h3 {
-            color: #3b82f6;
-            margin-bottom: 12px;
-            font-size: 20px;
-        }
-        
-        .info-card p {
-            color: #999;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        
-        /* Wallet Section */
+        /* Wallet Connection Section */
         .wallet-section {
             background: #1a1a1a;
             border-radius: 16px;
@@ -113,6 +49,18 @@
             margin-bottom: 30px;
             border: 1px solid #2a2a2a;
             text-align: center;
+        }
+        
+        .wallet-section h2 {
+            margin-bottom: 20px;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .wallet-section p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
         }
         
         #connectWalletBtn {
@@ -223,6 +171,7 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            color: white;
         }
         
         .wallet-name {
@@ -431,32 +380,15 @@
 </head>
 <body>
     <div id="mainContainer">
-        <!-- Hero Section -->
-        <div class="hero-section">
-            <h1 class="hero-title">Light Wave Reveals</h1>
-            <p class="hero-subtitle">Transform your unrevealed Light Waves into unique digital art</p>
-        </div>
-
-        <!-- Info Cards -->
-        <div class="info-grid">
-            <div class="info-card">
-                <h3>🔒 Secure Process</h3>
-                <p>Your wallet remains in your control. We never ask for seed phrases or private keys.</p>
-            </div>
-            <div class="info-card">
-                <h3>⚡ Instant Reveal</h3>
-                <p>Once confirmed, your Light Waves are revealed on-chain immediately.</p>
-            </div>
-            <div class="info-card">
-                <h3>💎 Fair Pricing</h3>
-                <p>Only pay network fees plus a small padding amount for the reveal inscription.</p>
-            </div>
+        <!-- Simple Title - No background -->
+        <div class="title-section">
+            <h1 class="main-title">Light Waves Reveals</h1>
         </div>
 
         <!-- Wallet Connection Section -->
         <div class="wallet-section">
-            <h2 style="margin-bottom: 20px; color: white;">Step 1: Connect Your Wallet</h2>
-            <p style="color: #666; margin-bottom: 30px;">Select your Bitcoin wallet to view unrevealed Light Waves</p>
+            <h2>Step 1: Connect Your Wallet</h2>
+            <p>Select your Bitcoin wallet to view unrevealed Light Waves</p>
             <button id="connectWalletBtn">Connect Wallet</button>
             <div id="walletAddress" class="hidden"></div>
         </div>
@@ -578,12 +510,6 @@
             // Connect wallet button
             document.getElementById('connectWalletBtn').addEventListener('click', showWalletSelection);
             
-            // Wallet options
-            document.getElementById('xverseOption').addEventListener('click', () => connectXverse());
-            document.getElementById('unisatOption').addEventListener('click', () => connectUnisat());
-            document.getElementById('leatherOption').addEventListener('click', () => connectLeather());
-            document.getElementById('magicedenOption').addEventListener('click', () => connectMagicEden());
-            
             // Close overlay when clicking outside
             document.getElementById('walletOverlay').addEventListener('click', function(e) {
                 if (e.target === this) {
@@ -596,9 +522,9 @@
         }
 
         function detectWallets() {
-            // Check each wallet and update UI
+            // Check each wallet with better detection
             const wallets = {
-                xverse: !!window.xverse,
+                xverse: !!(window.BitcoinProvider || window.xverse), // Xverse may use BitcoinProvider
                 unisat: !!window.unisat,
                 leather: !!window.LeatherProvider,
                 magiceden: !!(window.magicEden && window.magicEden.bitcoin)
@@ -611,6 +537,16 @@
             updateWalletStatus('magiceden', wallets.magiceden);
             
             console.log('Detected wallets:', wallets);
+            
+            // Debug log to check what's available
+            console.log('Window objects:', {
+                BitcoinProvider: window.BitcoinProvider,
+                xverse: window.xverse,
+                unisat: window.unisat,
+                LeatherProvider: window.LeatherProvider,
+                magicEden: window.magicEden
+            });
+            
             return wallets;
         }
 
@@ -623,6 +559,26 @@
                     statusEl.textContent = 'Ready';
                     statusEl.style.color = '#10b981';
                     optionEl.classList.remove('disabled');
+                    
+                    // Remove old handler and add new one
+                    optionEl.replaceWith(optionEl.cloneNode(true));
+                    const newOptionEl = document.getElementById(walletName + 'Option');
+                    
+                    // Add click handlers
+                    switch(walletName) {
+                        case 'xverse':
+                            newOptionEl.addEventListener('click', () => connectXverse());
+                            break;
+                        case 'unisat':
+                            newOptionEl.addEventListener('click', () => connectUnisat());
+                            break;
+                        case 'leather':
+                            newOptionEl.addEventListener('click', () => connectLeather());
+                            break;
+                        case 'magiceden':
+                            newOptionEl.addEventListener('click', () => connectMagicEden());
+                            break;
+                    }
                 } else {
                     statusEl.textContent = 'Not installed';
                     statusEl.style.color = '#666';
@@ -653,15 +609,18 @@
         }
 
         async function connectXverse() {
-            if (!window.xverse) {
+            // Check both possible Xverse objects
+            const xverseProvider = window.BitcoinProvider || window.xverse;
+            
+            if (!xverseProvider) {
                 showError('Xverse wallet not detected. Please install the browser extension.');
                 return;
             }
             
             try {
-                const response = await window.xverse.request('getAddresses', {
+                const response = await xverseProvider.request('getAddresses', {
                     purposes: ['ordinals', 'payment'],
-                    message: 'Connect to Light Wave Reveals'
+                    message: 'Connect to Light Waves Reveals'
                 });
                 
                 if (response.status === 'success') {
@@ -675,14 +634,14 @@
                         paymentAddress: payAddress.address,
                         ordPub: ordAddress.publicKey,
                         payPub: payAddress.publicKey,
-                        provider: window.xverse
+                        provider: xverseProvider
                     };
                     
                     onWalletConnected();
                 }
             } catch (error) {
                 console.error('Xverse connection error:', error);
-                if (error.message.includes('User rejected')) {
+                if (error.message && error.message.includes('User rejected')) {
                     showError('Connection cancelled by user');
                 } else {
                     showError('Failed to connect Xverse wallet. Please try again.');
@@ -712,7 +671,7 @@
                 onWalletConnected();
             } catch (error) {
                 console.error('Unisat connection error:', error);
-                if (error.message.includes('User rejected')) {
+                if (error.message && error.message.includes('User rejected')) {
                     showError('Connection cancelled by user');
                 } else {
                     showError('Failed to connect Unisat wallet. Please try again.');
@@ -752,7 +711,7 @@
                 }
             } catch (error) {
                 console.error('Leather connection error:', error);
-                if (error.message.includes('User rejected')) {
+                if (error.message && error.message.includes('User rejected')) {
                     showError('Connection cancelled by user');
                 } else {
                     showError('Failed to connect Leather wallet. Please try again.');
@@ -762,17 +721,14 @@
 
         async function connectMagicEden() {
             if (!window.magicEden?.bitcoin) {
-                showError('Magic Eden wallet not detected. Please install the browser extension.');
+                showError('Magic Eden wallet not detected. Please make sure you are logged into the Magic Eden browser extension.');
                 return;
             }
             
             try {
                 const provider = window.magicEden.bitcoin;
                 
-                // Request connection
-                await provider.connect();
-                
-                // Get addresses
+                // Get addresses - Magic Eden may not require explicit connect
                 const response = await provider.getAddresses();
                 
                 if (response && response.addresses) {
@@ -800,10 +756,18 @@
                 }
             } catch (error) {
                 console.error('MagicEden connection error:', error);
-                if (error.message.includes('User rejected')) {
-                    showError('Connection cancelled by user');
-                } else {
-                    showError('Failed to connect Magic Eden wallet. Please try again.');
+                
+                // Try alternative connection method
+                try {
+                    await window.magicEden.bitcoin.connect();
+                    // Try again after connecting
+                    connectMagicEden();
+                } catch (connectError) {
+                    if (error.message && error.message.includes('User rejected')) {
+                        showError('Connection cancelled by user');
+                    } else {
+                        showError('Failed to connect Magic Eden wallet. Please make sure you are logged in.');
+                    }
                 }
             }
         }
