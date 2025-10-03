@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Light Wave Reveal</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             background: #0a0a0a;
-            color: white;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             min-height: 100vh;
+            line-height: 1.6;
         }
         
         #mainContainer {
@@ -20,60 +25,126 @@
             padding: 20px;
         }
         
-        /* Header with banner image */
-        #headerSection {
-            background: #1a1a1a;
-            padding: 0;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            margin-bottom: 30px;
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            position: relative;
             overflow: hidden;
         }
         
-        #bannerImage {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #666;
-            font-size: 18px;
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
         }
         
-        #walletControls {
-            padding: 20px 30px;
-            display: flex;
-            justify-content: center; /* Center the button */
-            align-items: center;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+        
+        .hero-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-subtitle {
+            font-size: 20px;
+            color: #999;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Info Cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
+            margin-bottom: 40px;
         }
         
-        #connectWalletBtn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 12px 32px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
+        .info-card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 24px;
             transition: all 0.3s;
         }
         
+        .info-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .info-card h3 {
+            color: #3b82f6;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+        
+        .info-card p {
+            color: #999;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* Wallet Section */
+        .wallet-section {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #2a2a2a;
+            text-align: center;
+        }
+        
+        #connectWalletBtn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
         #connectWalletBtn:hover {
-            background: #2563eb;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
         }
         
         #walletAddress {
             color: #3b82f6;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
+            font-size: 16px;
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            display: inline-block;
         }
         
-        /* Improved Wallet Selection Popup */
+        /* Wallet Selection Modal */
         #walletOverlay {
             display: none;
             position: fixed;
@@ -81,9 +152,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 999;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(10px);
         }
         
         #walletSelectionBox {
@@ -93,60 +164,78 @@
             transform: translate(-50%, -50%);
             background: #1a1a1a;
             padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
             z-index: 1000;
             border: 1px solid #2a2a2a;
-            min-width: 320px;
+            max-width: 400px;
+            width: 90%;
         }
         
-        #walletSelectionBox h3 {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0 0 24px 0;
+        .modal-header {
             text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .modal-header h3 {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .modal-header p {
+            color: #666;
+            font-size: 14px;
         }
         
         .wallet-option {
             background: #252525;
-            border: 2px solid #333333;
-            padding: 18px 24px;
+            border: 2px solid transparent;
+            padding: 20px;
             margin: 12px 0;
             border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-            font-weight: 500;
-            color: #e0e0e0;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
             position: relative;
-            overflow: hidden;
         }
         
-        .wallet-option:hover {
+        .wallet-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .wallet-option:not(.disabled):hover {
             border-color: #3b82f6;
             background: #2a2a2a;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-            color: #ffffff;
+            transform: translateX(5px);
         }
         
-        .wallet-option::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 100%;
-            background: rgba(59, 130, 246, 0.1);
-            transition: width 0.3s;
+        .wallet-icon {
+            width: 32px;
+            height: 32px;
+            background: #3b82f6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
         
-        .wallet-option:hover::before {
-            width: 100%;
+        .wallet-name {
+            flex: 1;
+            font-weight: 500;
+            color: #e0e0e0;
         }
         
-        /* Close button for popup */
+        .wallet-status {
+            font-size: 12px;
+            color: #666;
+        }
+        
         .close-btn {
             position: absolute;
             top: 20px;
@@ -154,130 +243,185 @@
             background: none;
             border: none;
             color: #666;
-            font-size: 24px;
+            font-size: 28px;
             cursor: pointer;
             transition: color 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
         
         .close-btn:hover {
             color: #fff;
-        }
-        
-        /* Messages */
-        #noWalletsMsg, #errorBox {
-            background: #7f1d1d;
-            border: 1px solid #dc2626;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            color: #fecaca;
-            margin: 20px auto;
-            max-width: 600px;
-        }
-        
-        #loadingBox {
-            background: #1a1a1a;
-            border-radius: 8px;
-            padding: 40px;
-            text-align: center;
-            margin: 20px 0;
-            border: 1px solid #2a2a2a;
-        }
-        
-        #emptyMessage {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 8px;
-            padding: 40px;
-            text-align: center;
-            color: #666;
-            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.1);
         }
         
         /* Light Waves Section */
         #lightwavesSection {
-            margin-top: 30px;
+            margin-top: 40px;
         }
         
-        #lightwavesSection h2 {
+        .section-header {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            border: 1px solid #2a2a2a;
+            border-bottom: none;
+        }
+        
+        .section-header h2 {
             color: white;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
+        }
+        
+        .section-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .lightwave-list {
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 20px;
         }
         
         .lightwave-item {
             background: #1a1a1a;
             border: 1px solid #2a2a2a;
-            padding: 16px;
-            margin: 10px 0;
-            border-radius: 8px;
+            padding: 20px;
+            margin: 12px 0;
+            border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
             transition: all 0.3s;
         }
         
         .lightwave-item:hover {
             border-color: #3b82f6;
             background: #1e1e1e;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
         }
         
         .lightwave-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             accent-color: #3b82f6;
             cursor: pointer;
         }
         
         .lw-number {
             color: white;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 18px;
         }
         
         .lw-status {
             color: #666;
             font-size: 14px;
             margin-left: auto;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
         }
         
         /* Reveal Section */
         #revealSection {
-            background: #1a1a1a;
-            padding: 30px;
-            border-radius: 12px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 100%);
+            padding: 40px;
+            border-radius: 16px;
             margin-top: 30px;
             border: 1px solid #2a2a2a;
+            text-align: center;
         }
         
         #selectedCount {
-            font-size: 18px;
-            margin-bottom: 10px;
+            font-size: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
         }
         
         #totalCost {
             color: #3b82f6;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 30px;
         }
         
         #revealBtn {
-            background: #10b981;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
-            padding: 14px 28px;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 16px 48px;
+            border-radius: 12px;
+            font-size: 18px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         
         #revealBtn:hover {
-            background: #059669;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        /* Messages */
+        .message-box {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px auto;
+            max-width: 600px;
+            text-align: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        #noWalletsMsg, #errorBox {
+            background: #7f1d1d;
+            border: 1px solid #dc2626;
+            color: #fecaca;
+        }
+        
+        #loadingBox {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            color: #999;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #emptyMessage {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            padding: 60px 40px;
+            text-align: center;
+            color: #666;
+            border-radius: 12px;
         }
         
         .hidden {
@@ -287,60 +431,117 @@
 </head>
 <body>
     <div id="mainContainer">
-        <!-- Header Section -->
-        <div id="headerSection">
-            <div id="bannerImage">
-                <!-- You can replace this with an actual image later -->
-                [Light Wave Banner Image Placeholder]
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <h1 class="hero-title">Light Wave Reveals</h1>
+            <p class="hero-subtitle">Transform your unrevealed Light Waves into unique digital art</p>
+        </div>
+
+        <!-- Info Cards -->
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>🔒 Secure Process</h3>
+                <p>Your wallet remains in your control. We never ask for seed phrases or private keys.</p>
             </div>
-            <div id="walletControls">
-                <button id="connectWalletBtn">Connect Wallet</button>
-                <span id="walletAddress" class="hidden"></span>
+            <div class="info-card">
+                <h3>⚡ Instant Reveal</h3>
+                <p>Once confirmed, your Light Waves are revealed on-chain immediately.</p>
+            </div>
+            <div class="info-card">
+                <h3>💎 Fair Pricing</h3>
+                <p>Only pay network fees plus a small padding amount for the reveal inscription.</p>
             </div>
         </div>
 
-        <!-- Wallet Selection Popup -->
+        <!-- Wallet Connection Section -->
+        <div class="wallet-section">
+            <h2 style="margin-bottom: 20px; color: white;">Step 1: Connect Your Wallet</h2>
+            <p style="color: #666; margin-bottom: 30px;">Select your Bitcoin wallet to view unrevealed Light Waves</p>
+            <button id="connectWalletBtn">Connect Wallet</button>
+            <div id="walletAddress" class="hidden"></div>
+        </div>
+
+        <!-- Wallet Selection Modal -->
         <div id="walletOverlay">
             <div id="walletSelectionBox">
                 <button class="close-btn" onclick="closeWalletSelection()">×</button>
-                <h3>Select Your Wallet</h3>
-                <div id="xverseOption" class="wallet-option">Xverse</div>
-                <div id="unisatOption" class="wallet-option">Unisat</div>
-                <div id="leatherOption" class="wallet-option">Leather (Hiro)</div>
-                <div id="magicedenOption" class="wallet-option">Magic Eden</div>
+                <div class="modal-header">
+                    <h3>Select Your Wallet</h3>
+                    <p>Choose a wallet to connect</p>
+                </div>
+                
+                <div id="xverseOption" class="wallet-option">
+                    <div class="wallet-icon">X</div>
+                    <div>
+                        <div class="wallet-name">Xverse</div>
+                        <div class="wallet-status" id="xverseStatus">Checking...</div>
+                    </div>
+                </div>
+                
+                <div id="unisatOption" class="wallet-option">
+                    <div class="wallet-icon">U</div>
+                    <div>
+                        <div class="wallet-name">Unisat</div>
+                        <div class="wallet-status" id="unisatStatus">Checking...</div>
+                    </div>
+                </div>
+                
+                <div id="leatherOption" class="wallet-option">
+                    <div class="wallet-icon">L</div>
+                    <div>
+                        <div class="wallet-name">Leather (Hiro)</div>
+                        <div class="wallet-status" id="leatherStatus">Checking...</div>
+                    </div>
+                </div>
+                
+                <div id="magicedenOption" class="wallet-option">
+                    <div class="wallet-icon">M</div>
+                    <div>
+                        <div class="wallet-name">Magic Eden</div>
+                        <div class="wallet-status" id="magicedenStatus">Checking...</div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Messages -->
-        <div id="noWalletsMsg" class="hidden">
-            No Bitcoin wallets detected. Please install Xverse, Unisat, Leather, or Magic Eden.
+        <div id="noWalletsMsg" class="message-box hidden">
+            <strong>No Bitcoin wallets detected</strong><br>
+            Please install Xverse, Unisat, Leather, or Magic Eden browser extension
         </div>
         
-        <div id="loadingBox" class="hidden">
-            <div>Loading Light Waves...</div>
-            <div style="margin-top: 10px;">⏳</div>
+        <div id="loadingBox" class="message-box hidden">
+            Loading your Light Waves
+            <span class="loading-spinner"></span>
         </div>
 
         <!-- Light Waves Section -->
         <div id="lightwavesSection" class="hidden">
-            <h2>Unrevealed Light Waves</h2>
-            <div id="lightwavesRepeater">
-                <!-- Items will be added here by JavaScript -->
+            <div class="section-header">
+                <h2>Step 2: Select Light Waves to Reveal</h2>
+                <p>Choose which Light Waves you want to reveal. Each selection will show the estimated cost.</p>
             </div>
-            <div id="emptyMessage" class="hidden">
-                No unrevealed Light Waves found in this wallet
+            <div class="lightwave-list">
+                <div id="lightwavesRepeater">
+                    <!-- Items will be added here by JavaScript -->
+                </div>
+                <div id="emptyMessage" class="hidden">
+                    <h3 style="color: white; margin-bottom: 10px;">No Unrevealed Light Waves Found</h3>
+                    <p>This wallet doesn't contain any unrevealed Light Waves.</p>
+                </div>
             </div>
         </div>
 
         <!-- Reveal Section -->
         <div id="revealSection" class="hidden">
+            <h2 style="color: white; margin-bottom: 30px;">Step 3: Confirm and Reveal</h2>
             <div id="selectedCount"></div>
             <div id="totalCost"></div>
             <button id="revealBtn">Reveal Selected Light Waves</button>
         </div>
 
         <!-- Error Box -->
-        <div id="errorBox" class="hidden">
+        <div id="errorBox" class="message-box hidden">
             <span id="errorMessage"></span>
         </div>
     </div>
@@ -354,12 +555,24 @@
         let connectedWallet = null;
         let selectedLightWaves = new Set();
         let unrevealedLightWaves = [];
+        let walletCheckInterval = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             setupEventHandlers();
-            detectWallets();
+            // Start checking for wallets
+            checkWalletsRepeatedly();
         });
+
+        function checkWalletsRepeatedly() {
+            // Check immediately
+            detectWallets();
+            
+            // Then check every 2 seconds for newly installed wallets
+            walletCheckInterval = setInterval(() => {
+                detectWallets();
+            }, 2000);
+        }
 
         function setupEventHandlers() {
             // Connect wallet button
@@ -383,32 +596,54 @@
         }
 
         function detectWallets() {
-            const wallets = [];
-            if (window.unisat) wallets.push('unisat');
-            if (window.xverse) wallets.push('xverse');
-            if (window.LeatherProvider) wallets.push('leather');
-            if (window.magicEden?.bitcoin) wallets.push('magiceden');
+            // Check each wallet and update UI
+            const wallets = {
+                xverse: !!window.xverse,
+                unisat: !!window.unisat,
+                leather: !!window.LeatherProvider,
+                magiceden: !!(window.magicEden && window.magicEden.bitcoin)
+            };
+            
+            // Update status for each wallet
+            updateWalletStatus('xverse', wallets.xverse);
+            updateWalletStatus('unisat', wallets.unisat);
+            updateWalletStatus('leather', wallets.leather);
+            updateWalletStatus('magiceden', wallets.magiceden);
             
             console.log('Detected wallets:', wallets);
             return wallets;
         }
 
+        function updateWalletStatus(walletName, isDetected) {
+            const statusEl = document.getElementById(walletName + 'Status');
+            const optionEl = document.getElementById(walletName + 'Option');
+            
+            if (statusEl && optionEl) {
+                if (isDetected) {
+                    statusEl.textContent = 'Ready';
+                    statusEl.style.color = '#10b981';
+                    optionEl.classList.remove('disabled');
+                } else {
+                    statusEl.textContent = 'Not installed';
+                    statusEl.style.color = '#666';
+                    optionEl.classList.add('disabled');
+                }
+            }
+        }
+
         function showWalletSelection() {
             const wallets = detectWallets();
             
-            if (wallets.length === 0) {
+            // Check if any wallet is installed
+            const hasAnyWallet = Object.values(wallets).some(v => v);
+            
+            if (!hasAnyWallet) {
                 document.getElementById('noWalletsMsg').classList.remove('hidden');
                 setTimeout(() => {
                     document.getElementById('noWalletsMsg').classList.add('hidden');
                 }, 5000);
                 return;
             }
-            
-            // Always show all wallet options - let user see what's available
-            document.getElementById('xverseOption').style.opacity = wallets.includes('xverse') ? '1' : '0.5';
-            document.getElementById('unisatOption').style.opacity = wallets.includes('unisat') ? '1' : '0.5';
-            document.getElementById('leatherOption').style.opacity = wallets.includes('leather') ? '1' : '0.5';
-            document.getElementById('magicedenOption').style.opacity = wallets.includes('magiceden') ? '1' : '0.5';
             
             document.getElementById('walletOverlay').style.display = 'block';
         }
@@ -418,13 +653,17 @@
         }
 
         async function connectXverse() {
+            if (!window.xverse) {
+                showError('Xverse wallet not detected. Please install the browser extension.');
+                return;
+            }
+            
             try {
-                if (!window.xverse) {
-                    showError('Xverse wallet not detected. Please install it first.');
-                    return;
-                }
+                const response = await window.xverse.request('getAddresses', {
+                    purposes: ['ordinals', 'payment'],
+                    message: 'Connect to Light Wave Reveals'
+                });
                 
-                const response = await window.xverse.request('getAddresses');
                 if (response.status === 'success') {
                     const addresses = response.result.addresses;
                     const ordAddress = addresses.find(a => a.purpose === 'ordinals');
@@ -443,17 +682,21 @@
                 }
             } catch (error) {
                 console.error('Xverse connection error:', error);
-                showError('Failed to connect Xverse wallet');
+                if (error.message.includes('User rejected')) {
+                    showError('Connection cancelled by user');
+                } else {
+                    showError('Failed to connect Xverse wallet. Please try again.');
+                }
             }
         }
 
         async function connectUnisat() {
+            if (!window.unisat) {
+                showError('Unisat wallet not detected. Please install the browser extension.');
+                return;
+            }
+            
             try {
-                if (!window.unisat) {
-                    showError('Unisat wallet not detected. Please install it first.');
-                    return;
-                }
-                
                 const accounts = await window.unisat.requestAccounts();
                 const publicKey = await window.unisat.getPublicKey();
                 
@@ -469,21 +712,32 @@
                 onWalletConnected();
             } catch (error) {
                 console.error('Unisat connection error:', error);
-                showError('Failed to connect Unisat wallet');
+                if (error.message.includes('User rejected')) {
+                    showError('Connection cancelled by user');
+                } else {
+                    showError('Failed to connect Unisat wallet. Please try again.');
+                }
             }
         }
 
         async function connectLeather() {
+            if (!window.LeatherProvider) {
+                showError('Leather wallet not detected. Please install the browser extension.');
+                return;
+            }
+            
             try {
-                if (!window.LeatherProvider) {
-                    showError('Leather wallet not detected. Please install it first.');
-                    return;
-                }
-                
                 const response = await window.LeatherProvider.request('getAddresses');
+                
                 if (response.status === 'success') {
-                    const taproot = response.result.addresses.find(a => a.type === 'p2tr');
-                    const payment = response.result.addresses.find(a => a.type === 'p2wpkh') || taproot;
+                    const addresses = response.result.addresses;
+                    const taproot = addresses.find(a => a.type === 'p2tr');
+                    const payment = addresses.find(a => a.type === 'p2wpkh') || taproot;
+                    
+                    if (!taproot) {
+                        showError('Please enable Taproot addresses in your Leather wallet settings.');
+                        return;
+                    }
                     
                     connectedWallet = {
                         type: 'leather',
@@ -498,57 +752,75 @@
                 }
             } catch (error) {
                 console.error('Leather connection error:', error);
-                showError('Failed to connect Leather wallet');
+                if (error.message.includes('User rejected')) {
+                    showError('Connection cancelled by user');
+                } else {
+                    showError('Failed to connect Leather wallet. Please try again.');
+                }
             }
         }
 
         async function connectMagicEden() {
+            if (!window.magicEden?.bitcoin) {
+                showError('Magic Eden wallet not detected. Please install the browser extension.');
+                return;
+            }
+            
             try {
-                if (!window.magicEden?.bitcoin) {
-                    showError('Magic Eden wallet not detected. Please install it first.');
-                    return;
-                }
-                
-                // Magic Eden has different connection flow
                 const provider = window.magicEden.bitcoin;
                 
-                // First check if already connected
-                const connected = await provider.isConnected();
-                if (!connected) {
-                    // Request connection
-                    await provider.connect();
-                }
+                // Request connection
+                await provider.connect();
                 
                 // Get addresses
                 const response = await provider.getAddresses();
-                const ord = response.addresses.find(a => a.purpose === 'ordinals');
-                const pay = response.addresses.find(a => a.purpose === 'payment') || ord;
                 
-                connectedWallet = {
-                    type: 'magiceden',
-                    ordinalsAddress: ord.address,
-                    paymentAddress: pay.address,
-                    ordPub: ord.publicKey,
-                    payPub: pay.publicKey,
-                    provider: provider
-                };
-                
-                onWalletConnected();
+                if (response && response.addresses) {
+                    const addresses = response.addresses;
+                    const ord = addresses.find(a => a.purpose === 'ordinals');
+                    const pay = addresses.find(a => a.purpose === 'payment') || ord;
+                    
+                    if (!ord) {
+                        showError('Could not get ordinals address from Magic Eden wallet.');
+                        return;
+                    }
+                    
+                    connectedWallet = {
+                        type: 'magiceden',
+                        ordinalsAddress: ord.address,
+                        paymentAddress: pay.address,
+                        ordPub: ord.publicKey,
+                        payPub: pay.publicKey,
+                        provider: provider
+                    };
+                    
+                    onWalletConnected();
+                } else {
+                    showError('Invalid response from Magic Eden wallet.');
+                }
             } catch (error) {
                 console.error('MagicEden connection error:', error);
-                showError('Failed to connect Magic Eden wallet. Please try again.');
+                if (error.message.includes('User rejected')) {
+                    showError('Connection cancelled by user');
+                } else {
+                    showError('Failed to connect Magic Eden wallet. Please try again.');
+                }
             }
         }
 
         function onWalletConnected() {
+            // Stop checking for wallets
+            if (walletCheckInterval) {
+                clearInterval(walletCheckInterval);
+            }
+            
             // Hide wallet selection
             closeWalletSelection();
             
             // Update UI
             document.getElementById('connectWalletBtn').style.display = 'none';
             document.getElementById('walletAddress').textContent = 
-                connectedWallet.ordinalsAddress.slice(0, 6) + '...' + 
-                connectedWallet.ordinalsAddress.slice(-4);
+                `Connected: ${connectedWallet.ordinalsAddress.slice(0, 6)}...${connectedWallet.ordinalsAddress.slice(-4)}`;
             document.getElementById('walletAddress').classList.remove('hidden');
             
             // Load Light Waves
@@ -584,7 +856,7 @@
             } catch (error) {
                 console.error('Error loading Light Waves:', error);
                 document.getElementById('loadingBox').classList.add('hidden');
-                showError('Failed to load Light Waves');
+                showError('Failed to load Light Waves. Please check your connection and try again.');
             }
         }
 
@@ -619,7 +891,7 @@
             const count = selectedLightWaves.size;
             if (count > 0) {
                 document.getElementById('revealSection').classList.remove('hidden');
-                document.getElementById('selectedCount').textContent = `${count} Light Waves selected`;
+                document.getElementById('selectedCount').textContent = `${count} Light Wave${count > 1 ? 's' : ''} selected`;
                 updateFeeEstimate();
             } else {
                 document.getElementById('revealSection').classList.add('hidden');
@@ -632,12 +904,13 @@
             const networkFee = Math.ceil(count * 200 * 20);
             const totalCost = baseCost + networkFee;
             
-            document.getElementById('totalCost').textContent = `Total: ${totalCost.toLocaleString()} sats`;
+            document.getElementById('totalCost').textContent = `Total Cost: ${totalCost.toLocaleString()} sats (~$${(totalCost * 0.0003).toFixed(2)} USD)`;
         }
 
         function revealSelected() {
             console.log('Revealing selected Light Waves:', Array.from(selectedLightWaves));
-            showError('Reveal functionality coming soon!');
+            // Here you would implement the actual reveal logic
+            showError('Reveal functionality coming soon! Selected: ' + Array.from(selectedLightWaves).join(', '));
         }
 
         function showError(message) {
