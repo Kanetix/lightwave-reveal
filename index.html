@@ -609,9 +609,7 @@
         }
 
         async function connectXverse() {
-            const provider = window.BitcoinProvider || 
-                            window.xverseProviders?.BitcoinProvider || 
-                            window.xverse;
+            const provider = window.BitcoinProvider || window.xverse;
             
             if (!provider) {
                 showError('Xverse wallet not detected');
@@ -619,20 +617,12 @@
             }
             
             try {
-                // First, call connect to establish connection
-                console.log('Calling Xverse connect...');
-                await provider.connect();
-                console.log('Connected to Xverse');
+                // The key issue: Xverse expects null for getAddresses, not an object
+                const response = await provider.request('getAddresses', null);
                 
-                // Now request addresses
-                const response = await provider.request('getAddresses', {
-                    purposes: ['ordinals', 'payment'],
-                    message: 'Light Waves Reveals needs access to your addresses'
-                });
+                console.log('Xverse response:', response);
                 
-                console.log('Xverse getAddresses response:', response);
-                
-                if (response.result) {
+                if (response.status === 'success' && response.result) {
                     const addresses = response.result;
                     const ordAddress = addresses.find(a => a.purpose === 'ordinals');
                     const payAddress = addresses.find(a => a.purpose === 'payment');
@@ -643,7 +633,7 @@
                             ordinalsAddress: ordAddress.address,
                             paymentAddress: payAddress ? payAddress.address : ordAddress.address,
                             ordPub: ordAddress.publicKey || '',
-                            payPub: payAddress ? payAddress.publicKey : ordAddress.publicKey || '',
+                            payPub: payAddress ? payAddress.publicKey : '',
                             provider: provider
                         };
                         
@@ -652,11 +642,7 @@
                 }
             } catch (error) {
                 console.error('Xverse error:', error);
-                if (error.code === -32002) {
-                    showError('Connection denied. Please approve the connection in Xverse.');
-                } else {
-                    showError('Failed to connect Xverse');
-                }
+                showError('Failed to connect Xverse');
             }
         }
         
