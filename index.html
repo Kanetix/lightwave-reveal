@@ -556,13 +556,18 @@
 
     <script>
         // Redirect to full page when embedded in iframe
+        // Add ?edit=true to the URL to disable redirect for editing in Wix
         (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const editMode = urlParams.get('edit') === 'true';
             const isEmbedded = window.top !== window.self;
             
-            if (isEmbedded) {
+            if (isEmbedded && !editMode) {
                 console.log('Page is embedded in iframe, redirecting to full page...');
                 // Redirect to the full GitHub Pages URL
                 window.top.location.href = window.location.href;
+            } else if (editMode) {
+                console.log('Edit mode enabled - redirect disabled');
             }
         })();
 
