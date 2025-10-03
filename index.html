@@ -323,7 +323,6 @@
             box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4);
         }
         
-        /* Messages */
         .message-box {
             padding: 20px;
             border-radius: 12px;
@@ -381,12 +380,10 @@
 </head>
 <body>
     <div id="mainContainer">
-        <!-- Simple Title - No background -->
         <div class="title-section">
             <h1 class="main-title">Light Waves Reveals</h1>
         </div>
 
-        <!-- Wallet Connection Section -->
         <div class="wallet-section">
             <h2>Step 1: Connect Your Wallet</h2>
             <p>Select your Bitcoin wallet to view unrevealed Light Waves</p>
@@ -394,7 +391,6 @@
             <div id="walletAddress" class="hidden"></div>
         </div>
 
-        <!-- Wallet Selection Modal -->
         <div id="walletOverlay">
             <div id="walletSelectionBox">
                 <button class="close-btn" onclick="closeWalletSelection()">×</button>
@@ -437,7 +433,6 @@
             </div>
         </div>
 
-        <!-- Messages -->
         <div id="noWalletsMsg" class="message-box hidden">
             <strong>No Bitcoin wallets detected</strong><br>
             Please install Xverse, Unisat, Leather, or Magic Eden browser extension
@@ -448,7 +443,6 @@
             <span class="loading-spinner"></span>
         </div>
 
-        <!-- Light Waves Section -->
         <div id="lightwavesSection" class="hidden">
             <div class="section-header">
                 <h2>Step 2: Select Light Waves to Reveal</h2>
@@ -456,7 +450,6 @@
             </div>
             <div class="lightwave-list">
                 <div id="lightwavesRepeater">
-                    <!-- Items will be added here by JavaScript -->
                 </div>
                 <div id="emptyMessage" class="hidden">
                     <h3 style="color: white; margin-bottom: 10px;">No Unrevealed Light Waves Found</h3>
@@ -465,7 +458,6 @@
             </div>
         </div>
 
-        <!-- Reveal Section -->
         <div id="revealSection" class="hidden">
             <h2 style="color: white; margin-bottom: 30px;">Step 3: Confirm and Reveal</h2>
             <div id="selectedCount"></div>
@@ -473,21 +465,16 @@
             <button id="revealBtn">Reveal Selected Light Waves</button>
         </div>
 
-        <!-- Error Box -->
         <div id="errorBox" class="message-box hidden">
             <span id="errorMessage"></span>
         </div>
     </div>
 
     <script>
-        // Security: Prevent clickjacking (keeping this one as it doesn't break wallets)
         if (window.top !== window.self) {
             window.top.location = window.self.location;
         }
 
-        // REMOVED Object.freeze() calls that were breaking wallet extensions
-
-        // Configuration
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
         const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
         const MIN_PADDING_SATS = 330;
@@ -497,37 +484,30 @@
         let unrevealedLightWaves = [];
         let walletCheckInterval = null;
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             setupEventHandlers();
-            // Wait a bit for wallets to initialize before checking
             setTimeout(() => {
                 checkWalletsRepeatedly();
             }, 1000);
         });
 
         function checkWalletsRepeatedly() {
-            // Check immediately
             detectWallets();
             
-            // Then check every 2 seconds for newly installed wallets
             walletCheckInterval = setInterval(() => {
                 detectWallets();
             }, 2000);
         }
 
         function setupEventHandlers() {
-            // Connect wallet button
             document.getElementById('connectWalletBtn').addEventListener('click', showWalletSelection);
             
-            // Close overlay when clicking outside
             document.getElementById('walletOverlay').addEventListener('click', function(e) {
                 if (e.target === this) {
                     closeWalletSelection();
                 }
             });
             
-            // Reveal button
             document.getElementById('revealBtn').addEventListener('click', revealSelected);
         }
 
@@ -539,7 +519,6 @@
             magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
           };
             
-            // Update status for each wallet
             updateWalletStatus('xverse', wallets.xverse);
             updateWalletStatus('unisat', wallets.unisat);
             updateWalletStatus('leather', wallets.leather);
@@ -560,11 +539,9 @@
                     statusEl.style.color = '#10b981';
                     optionEl.classList.remove('disabled');
                     
-                    // Remove old handler and add new one
                     optionEl.replaceWith(optionEl.cloneNode(true));
                     const newOptionEl = document.getElementById(walletName + 'Option');
                     
-                    // Add click handlers
                     switch(walletName) {
                         case 'xverse':
                             newOptionEl.addEventListener('click', () => connectXverse());
@@ -576,7 +553,7 @@
                             newOptionEl.addEventListener('click', () => connectLeather());
                             break;
                         case 'magiceden':
-                            newOptionEl.addEventListener('click', () => connectMagicEden());
+                            newOptionEl.addEventListener('click', () => window.connectMagicEden && window.connectMagicEden());
                             break;
                     }
                 } else {
@@ -608,7 +585,6 @@
         }
 
 async function connectXverse() {
-  // Prefer Xverse's own provider over the generic namespace to avoid collisions
   const provider =
     (window.XverseProviders && window.XverseProviders.BitcoinProvider) ||
     window.xverse ||
@@ -618,9 +594,9 @@ async function connectXverse() {
 
   try {
     const resp = await provider.request('wallet_connect', {
-      addresses: ['ordinals', 'payment'],         // ⬅ only what you need
-      network: 'Mainnet',                         // optional but recommended
-      message: 'Light Waves: connect for reveal'  // optional UX
+      addresses: ['ordinals', 'payment'],
+      network: 'Mainnet',
+      message: 'Light Waves: connect for reveal'
     });
 
     if (resp?.result?.addresses?.length) {
@@ -715,21 +691,17 @@ async function connectXverse() {
         }
 
         function onWalletConnected() {
-            // Stop checking for wallets
             if (walletCheckInterval) {
                 clearInterval(walletCheckInterval);
             }
             
-            // Hide wallet selection
             closeWalletSelection();
             
-            // Update UI
             document.getElementById('connectWalletBtn').style.display = 'none';
             document.getElementById('walletAddress').textContent = 
                 `Connected: ${connectedWallet.ordinalsAddress.slice(0, 6)}...${connectedWallet.ordinalsAddress.slice(-4)}`;
             document.getElementById('walletAddress').classList.remove('hidden');
             
-            // Load Light Waves
             loadUnrevealedLightWaves();
         }
 
@@ -813,7 +785,6 @@ async function connectXverse() {
         }
 
         function revealSelected() {
-            // Implement actual reveal logic here
             showError('Reveal functionality coming soon!');
         }
 
