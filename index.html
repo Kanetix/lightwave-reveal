@@ -20,16 +20,83 @@
             line-height: 1.6;
         }
         
+        /* Header Bar */
+        .header-bar {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-bottom: 1px solid #3a3a3a;
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background-color: rgba(26, 26, 26, 0.95);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .back-button:hover {
+            transform: translateX(-3px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .back-button svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .security-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #10b981;
+            font-size: 14px;
+        }
+        
+        .security-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+        
         #mainContainer {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
         
-        /* Title Section - No background box */
+        /* Title Section - Adjusted for header */
         .title-section {
             text-align: center;
-            padding: 60px 20px 40px;
+            padding: 40px 20px 40px;
         }
         
         .main-title {
@@ -379,6 +446,28 @@
     </style>
 </head>
 <body>
+    <!-- Professional Header Bar -->
+    <div class="header-bar">
+        <div class="header-content">
+            <a href="https://kanetix.io" class="back-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back to Kanetix
+            </a>
+            
+            <div class="brand-name">Light Waves</div>
+            
+            <div class="security-badge">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L3.5 7v6c0 4.5 3.5 8.5 8.5 9.5 5-1 8.5-5 8.5-9.5V7L12 2z" opacity="0.3"/>
+                    <path d="M12 2L3.5 7v6c0 4.5 3.5 8.5 8.5 9.5 5-1 8.5-5 8.5-9.5V7L12 2zm0 9l-3 3 1.5 1.5L12 14l3.5 3.5L17 16l-5-5z"/>
+                </svg>
+                Secure Connection
+            </div>
+        </div>
+    </div>
+
     <div id="mainContainer">
         <div class="title-section">
             <h1 class="main-title">Light Waves Reveals</h1>
@@ -471,22 +560,14 @@
     </div>
 
     <script>
-        // FIX 1: Correct iframe detection
+        // Redirect to full page when embedded in iframe
         (function () {
             const isEmbedded = window.top !== window.self;
-            const ref = document.referrer || '';
-            // FIXED: Use your actual domain here
-            const allowHosts = [
-                'kanetix.io',
-                'localhost'  // For testing
-            ];
-            const allowed = allowHosts.some(h => ref.includes(h));
             
-            // Allow embedding from specified hosts
-            if (isEmbedded && !allowed) {
-                console.log('Page embedded from non-allowed host:', ref);
-                // Optionally redirect or show warning
-                // window.top.location = window.location;
+            if (isEmbedded) {
+                console.log('Page is embedded in iframe, redirecting to full page...');
+                // Redirect to the full GitHub Pages URL
+                window.top.location.href = window.location.href;
             }
         })();
 
@@ -537,12 +618,38 @@
         }
 
         function detectWallets() {
+            // Add debugging for iframe context
+            console.log('Detecting wallets in iframe context...');
+            console.log('Is in iframe:', window.top !== window.self);
+            console.log('Window objects available:', {
+                XverseProviders: !!window.XverseProviders,
+                BitcoinProvider: !!window.BitcoinProvider,
+                unisat: !!window.unisat,
+                LeatherProvider: !!window.LeatherProvider,
+                magicEden: !!window.magicEden
+            });
+            
             const wallets = {
                 xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
                 unisat: !!window.unisat,
                 leather: !!window.LeatherProvider,
                 magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
             };
+            
+            // Try to access parent window wallets if in iframe (this might not work due to CORS)
+            if (window.top !== window.self) {
+                try {
+                    // This will likely fail due to cross-origin restrictions, but worth trying
+                    if (window.parent && window.parent !== window) {
+                        console.log('Attempting to check parent window for wallets...');
+                        wallets.xverse = wallets.xverse || !!(window.parent.XverseProviders?.BitcoinProvider || window.parent.BitcoinProvider);
+                        wallets.unisat = wallets.unisat || !!window.parent.unisat;
+                        wallets.magiceden = wallets.magiceden || !!(window.parent.magicEden?.bitcoin);
+                    }
+                } catch (e) {
+                    console.log('Cannot access parent window wallets (expected):', e.message);
+                }
+            }
             
             updateWalletStatus('xverse', wallets.xverse);
             updateWalletStatus('unisat', wallets.unisat);
@@ -727,7 +834,7 @@
             }
         }
 
-        // FIX 2: Direct MagicEden connection using createUnsecuredToken
+        // MagicEden connection using createUnsecuredToken
         async function connectMagicEden() {
             try {
                 const provider = window.magicEden?.bitcoin;
