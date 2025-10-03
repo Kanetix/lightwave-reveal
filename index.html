@@ -17,41 +17,63 @@
         #mainContainer {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 40px;
+            padding: 20px;
         }
         
+        /* Header with banner image */
         #headerSection {
             background: #1a1a1a;
-            padding: 30px;
+            padding: 0;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        #bannerImage {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+        }
+        
+        #walletControls {
+            padding: 20px 30px;
+            display: flex;
+            justify-content: center; /* Center the button */
+            align-items: center;
+            gap: 20px;
         }
         
         #connectWalletBtn {
             background: #3b82f6;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 32px;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s;
         }
         
         #connectWalletBtn:hover {
             background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }
         
         #walletAddress {
             color: #3b82f6;
             font-family: 'Courier New', monospace;
             font-size: 14px;
-            margin-left: 20px;
         }
         
-        /* Wallet Selection Popup */
+        /* Improved Wallet Selection Popup */
         #walletOverlay {
             display: none;
             position: fixed;
@@ -59,8 +81,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             z-index: 999;
+            backdrop-filter: blur(5px);
         }
         
         #walletSelectionBox {
@@ -71,32 +94,73 @@
             background: #1a1a1a;
             padding: 40px;
             border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
             z-index: 1000;
+            border: 1px solid #2a2a2a;
+            min-width: 320px;
         }
         
         #walletSelectionBox h3 {
-            color: white;
+            color: #ffffff;
             font-size: 24px;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin: 0 0 24px 0;
             text-align: center;
         }
         
         .wallet-option {
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            padding: 16px;
-            margin: 10px 0;
+            background: #252525;
+            border: 2px solid #333333;
+            padding: 18px 24px;
+            margin: 12px 0;
             border-radius: 12px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             text-align: center;
+            font-weight: 500;
+            color: #e0e0e0;
+            position: relative;
+            overflow: hidden;
         }
         
         .wallet-option:hover {
             border-color: #3b82f6;
+            background: #2a2a2a;
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            color: #ffffff;
+        }
+        
+        .wallet-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background: rgba(59, 130, 246, 0.1);
+            transition: width 0.3s;
+        }
+        
+        .wallet-option:hover::before {
+            width: 100%;
+        }
+        
+        /* Close button for popup */
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .close-btn:hover {
+            color: #fff;
         }
         
         /* Messages */
@@ -107,7 +171,8 @@
             padding: 20px;
             text-align: center;
             color: #fecaca;
-            margin: 20px 0;
+            margin: 20px auto;
+            max-width: 600px;
         }
         
         #loadingBox {
@@ -116,6 +181,7 @@
             padding: 40px;
             text-align: center;
             margin: 20px 0;
+            border: 1px solid #2a2a2a;
         }
         
         #emptyMessage {
@@ -154,6 +220,7 @@
         
         .lightwave-item:hover {
             border-color: #3b82f6;
+            background: #1e1e1e;
         }
         
         .lightwave-item input[type="checkbox"] {
@@ -204,11 +271,13 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s;
         }
         
         #revealBtn:hover {
             background: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
         }
         
         .hidden {
@@ -220,28 +289,36 @@
     <div id="mainContainer">
         <!-- Header Section -->
         <div id="headerSection">
-            <button id="connectWalletBtn">Connect Wallet</button>
-            <span id="walletAddress" class="hidden"></span>
+            <div id="bannerImage">
+                <!-- You can replace this with an actual image later -->
+                [Light Wave Banner Image Placeholder]
+            </div>
+            <div id="walletControls">
+                <button id="connectWalletBtn">Connect Wallet</button>
+                <span id="walletAddress" class="hidden"></span>
+            </div>
         </div>
 
         <!-- Wallet Selection Popup -->
         <div id="walletOverlay">
             <div id="walletSelectionBox">
-                <h3>Select your wallet</h3>
+                <button class="close-btn" onclick="closeWalletSelection()">×</button>
+                <h3>Select Your Wallet</h3>
                 <div id="xverseOption" class="wallet-option">Xverse</div>
                 <div id="unisatOption" class="wallet-option">Unisat</div>
-                <div id="leatherOption" class="wallet-option">Leather</div>
-                <div id="magicedenOption" class="wallet-option">MagicEden</div>
+                <div id="leatherOption" class="wallet-option">Leather (Hiro)</div>
+                <div id="magicedenOption" class="wallet-option">Magic Eden</div>
             </div>
         </div>
 
         <!-- Messages -->
         <div id="noWalletsMsg" class="hidden">
-            No Bitcoin wallets detected. Please install Xverse, Unisat, Leather, or MagicEden.
+            No Bitcoin wallets detected. Please install Xverse, Unisat, Leather, or Magic Eden.
         </div>
         
         <div id="loadingBox" class="hidden">
-            Loading Light Waves...
+            <div>Loading Light Waves...</div>
+            <div style="margin-top: 10px;">⏳</div>
         </div>
 
         <!-- Light Waves Section -->
@@ -269,9 +346,7 @@
     </div>
 
     <script>
-        // Your original JavaScript code goes here
-        // For now, I'll add basic functionality
-        
+        // Configuration
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
         const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
         const MIN_PADDING_SATS = 330;
@@ -299,7 +374,7 @@
             // Close overlay when clicking outside
             document.getElementById('walletOverlay').addEventListener('click', function(e) {
                 if (e.target === this) {
-                    this.style.display = 'none';
+                    closeWalletSelection();
                 }
             });
             
@@ -329,17 +404,26 @@
                 return;
             }
             
-            // Show/hide wallet options based on detection
-            document.getElementById('xverseOption').style.display = wallets.includes('xverse') ? 'block' : 'none';
-            document.getElementById('unisatOption').style.display = wallets.includes('unisat') ? 'block' : 'none';
-            document.getElementById('leatherOption').style.display = wallets.includes('leather') ? 'block' : 'none';
-            document.getElementById('magicedenOption').style.display = wallets.includes('magiceden') ? 'block' : 'none';
+            // Always show all wallet options - let user see what's available
+            document.getElementById('xverseOption').style.opacity = wallets.includes('xverse') ? '1' : '0.5';
+            document.getElementById('unisatOption').style.opacity = wallets.includes('unisat') ? '1' : '0.5';
+            document.getElementById('leatherOption').style.opacity = wallets.includes('leather') ? '1' : '0.5';
+            document.getElementById('magicedenOption').style.opacity = wallets.includes('magiceden') ? '1' : '0.5';
             
             document.getElementById('walletOverlay').style.display = 'block';
         }
 
+        function closeWalletSelection() {
+            document.getElementById('walletOverlay').style.display = 'none';
+        }
+
         async function connectXverse() {
             try {
+                if (!window.xverse) {
+                    showError('Xverse wallet not detected. Please install it first.');
+                    return;
+                }
+                
                 const response = await window.xverse.request('getAddresses');
                 if (response.status === 'success') {
                     const addresses = response.result.addresses;
@@ -365,6 +449,11 @@
 
         async function connectUnisat() {
             try {
+                if (!window.unisat) {
+                    showError('Unisat wallet not detected. Please install it first.');
+                    return;
+                }
+                
                 const accounts = await window.unisat.requestAccounts();
                 const publicKey = await window.unisat.getPublicKey();
                 
@@ -386,6 +475,11 @@
 
         async function connectLeather() {
             try {
+                if (!window.LeatherProvider) {
+                    showError('Leather wallet not detected. Please install it first.');
+                    return;
+                }
+                
                 const response = await window.LeatherProvider.request('getAddresses');
                 if (response.status === 'success') {
                     const taproot = response.result.addresses.find(a => a.type === 'p2tr');
@@ -410,10 +504,25 @@
 
         async function connectMagicEden() {
             try {
-                await window.magicEden.bitcoin.connect();
-                const addresses = await window.magicEden.bitcoin.getAddresses();
-                const ord = addresses.addresses.find(a => a.purpose === 'ordinals');
-                const pay = addresses.addresses.find(a => a.purpose === 'payment') || ord;
+                if (!window.magicEden?.bitcoin) {
+                    showError('Magic Eden wallet not detected. Please install it first.');
+                    return;
+                }
+                
+                // Magic Eden has different connection flow
+                const provider = window.magicEden.bitcoin;
+                
+                // First check if already connected
+                const connected = await provider.isConnected();
+                if (!connected) {
+                    // Request connection
+                    await provider.connect();
+                }
+                
+                // Get addresses
+                const response = await provider.getAddresses();
+                const ord = response.addresses.find(a => a.purpose === 'ordinals');
+                const pay = response.addresses.find(a => a.purpose === 'payment') || ord;
                 
                 connectedWallet = {
                     type: 'magiceden',
@@ -421,19 +530,19 @@
                     paymentAddress: pay.address,
                     ordPub: ord.publicKey,
                     payPub: pay.publicKey,
-                    provider: window.magicEden.bitcoin
+                    provider: provider
                 };
                 
                 onWalletConnected();
             } catch (error) {
                 console.error('MagicEden connection error:', error);
-                showError('Failed to connect MagicEden wallet');
+                showError('Failed to connect Magic Eden wallet. Please try again.');
             }
         }
 
         function onWalletConnected() {
             // Hide wallet selection
-            document.getElementById('walletOverlay').style.display = 'none';
+            closeWalletSelection();
             
             // Update UI
             document.getElementById('connectWalletBtn').style.display = 'none';
