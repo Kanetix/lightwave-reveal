@@ -664,68 +664,67 @@
             }
         }
                 
-               async function connectMagicEden() {
-            const provider = window.magicEden?.bitcoin;
-            
-            if (!provider) {
+        async function connectMagicEden() {
+            if (!window.magicEden?.bitcoin) {
                 showError('Magic Eden wallet not detected');
                 return;
             }
             
             try {
-                // Debug what's available
-                console.log('Magic Eden provider:', provider);
-                console.log('Magic Eden methods:', Object.keys(provider));
-                console.log('Provider type:', typeof provider);
+                const provider = window.magicEden.bitcoin;
                 
-                // Check for different possible methods
-                if (typeof provider === 'object') {
-                    for (const [key, value] of Object.entries(provider)) {
-                        console.log(`${key}:`, typeof value, value);
-                    }
-                }
-                
-                // Try connect if it exists
+                // According to docs, ME uses JSON tokens for requests
+                // First, try to get the provider to inject its methods
                 if (provider.connect && typeof provider.connect === 'function') {
                     await provider.connect();
-                    console.log('Connected to Magic Eden');
                 }
                 
-                // Look for any address property
-                let address;
-                const possibleAddressKeys = ['selectedAddress', 'address', 'account', 'accounts', 'publicKey'];
-                
-                for (const key of possibleAddressKeys) {
-                    if (provider[key]) {
-                        console.log(`Found ${key}:`, provider[key]);
-                        if (typeof provider[key] === 'string') {
-                            address = provider[key];
-                            break;
-                        } else if (Array.isArray(provider[key]) && provider[key].length > 0) {
-                            address = provider[key][0];
-                            break;
-                        }
+                // ME uses a different format - they encode payloads as JSON tokens
+                // Try their getAddress method with the token format
+                const jsontokens = {
+                    createUnsecuredToken: (payload) => {
+                        return btoa(JSON.stringify({ payload }));
                     }
+                };
+                
+                const payload = {
+                    purposes: ['payment', 'ordinals']
+                };
+                
+                const request = jsontokens.createUnsecuredToken(payload);
+                
+                // Try to call getAddress with the encoded request
+                let response;
+                if (provider.getAddress) {
+                    response = await provider.getAddress(request);
+                } else if (provider.request) {
+                    response = await provider.request('getAddress', request);
+                } else {
+                    // Last resort - check if provider has been updated after connect
+                    console.log('ME provider after connect:', Object.keys(provider));
+                    throw new Error('No suitable method found');
                 }
                 
-                if (address) {
+                if (response && response.addresses) {
+                    const addresses = response.addresses;
+                    const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
+                    
                     connectedWallet = {
                         type: 'magiceden',
-                        ordinalsAddress: address,
-                        paymentAddress: address,
-                        ordPub: '',
-                        payPub: '',
+                        ordinalsAddress: ordAddress.address,
+                        paymentAddress: ordAddress.address,
+                        ordPub: ordAddress.publicKey || '',
+                        payPub: ordAddress.publicKey || '',
                         provider: provider
                     };
                     
                     onWalletConnected();
-                } else {
-                    showError('Magic Eden wallet detected but no Bitcoin address found. Please ensure Bitcoin is enabled in Magic Eden.');
                 }
-                
             } catch (error) {
                 console.error('Magic Eden error:', error);
-                showError('Failed to connect Magic Eden');
+                console.log('Available ME methods:', Object.getOwnPropertyNames(window.magicEden.bitcoin));
+                console.log('ME prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.magicEden.bitcoin)));
+                showError('Magic Eden connection failed. Check console for details.');
             }
         }
         
