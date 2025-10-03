@@ -796,47 +796,48 @@ async function connectXverse() {
             }, 5000);
         }
     </script>
-    <script type="module">
-      import { getAddress, AddressPurpose, BitcoinNetworkType }
-        from 'https://cdn.jsdelivr.net/npm/sats-connect/+esm';
-    
-      async function connectMagicEden() {
-        const provider = window.magicEden?.bitcoin;
-        if (!provider || !provider.isMagicEden) {
-          return window.showError('Magic Eden wallet not detected');
-        }
-    
-        try {
-          await getAddress({
-            getProvider: () => provider,
-            payload: {
-              purposes: [AddressPurpose.Payment, AddressPurpose.Ordinals],
-              message: 'Light Waves: address for Ordinals and payments',
-              network: { type: BitcoinNetworkType.Mainnet }
-            },
-            onFinish: ({ addresses }) => {
-              const ord = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-              const pay = addresses.find(a => a.purpose === 'payment') || ord;
-    
-              connectedWallet = {
-                type: 'magiceden',
-                ordinalsAddress: ord.address,
-                paymentAddress: pay.address,
-                ordPub: ord.publicKey || '',
-                payPub: pay.publicKey || ord.publicKey || '',
-                provider
-              };
-              onWalletConnected();
-            },
-            onCancel: () => showError('ME connect cancelled')
-          });
-        } catch (err) {
-          console.error('Magic Eden error:', err);
-          showError('Failed to connect Magic Eden');
-        }
-      }
-    
-      window.connectMagicEden = connectMagicEden;
-    </script>
+<script type="module">
+  import { getAddress, AddressPurpose, BitcoinNetworkType }
+    from 'https://cdn.jsdelivr.net/npm/sats-connect/+esm';
+
+  async function connectMagicEden() {
+    const provider = window.magicEden?.bitcoin;
+    if (!provider || !provider.isMagicEden) {
+      return window.showError('Magic Eden wallet not detected');
+    }
+
+    try {
+      await getAddress({
+        getProvider: () => provider,
+        payload: {
+          purposes: [AddressPurpose.Payment, AddressPurpose.Ordinals],
+          message: 'Light Waves: address for Ordinals and payments',
+          network: { type: BitcoinNetworkType.Mainnet }
+        },
+        onFinish: ({ addresses }) => {
+          const ord = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
+          const pay = addresses.find(a => a.purpose === 'payment') || ord;
+
+          window.connectedWallet = {
+            type: 'magiceden',
+            ordinalsAddress: ord.address,
+            paymentAddress: pay.address,
+            ordPub: ord.publicKey || '',
+            payPub: pay.publicKey || ord.publicKey || '',
+            provider
+          };
+          window.onWalletConnected();
+        },
+        onCancel: () => window.showError('ME connect cancelled')
+      });
+    } catch (err) {
+      console.error('[ME] error:', err);
+      window.showError('Failed to connect Magic Eden');
+    }
+  }
+
+  window.connectMagicEden = connectMagicEden;
+</script>
 </body>
 </html>
+
