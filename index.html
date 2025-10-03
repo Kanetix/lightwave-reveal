@@ -796,25 +796,36 @@ async function connectXverse() {
             }, 5000);
         }
     </script>
-<script type="module">
-  import { getAddress, AddressPurpose, BitcoinNetworkType }
-    from 'https://cdn.jsdelivr.net/npm/sats-connect/+esm';
+<script src="https://unpkg.com/sats-connect/dist/index.umd.js" defer></script>
+
+<script>
+  // Optional: sanity log after DOM is ready
+  window.addEventListener('DOMContentLoaded', () => {
+    console.log('[ME][Wix] SatsConnect ready?', !!window.SatsConnect,
+                'ME provider?', !!(window.magicEden?.bitcoin),
+                'isMagicEden?', window.magicEden?.bitcoin?.isMagicEden);
+  });
 
   async function connectMagicEden() {
     const provider = window.magicEden?.bitcoin;
     if (!provider || !provider.isMagicEden) {
-      return window.showError('Magic Eden wallet not detected');
+      return showError('Magic Eden wallet not detected');
     }
+    console.log('[ME][Wix] connect clicked');
 
     try {
-      await getAddress({
+      window.SatsConnect.getAddress({
         getProvider: () => provider,
         payload: {
-          purposes: [AddressPurpose.Payment, AddressPurpose.Ordinals],
+          purposes: [
+            window.SatsConnect.AddressPurpose.Payment,
+            window.SatsConnect.AddressPurpose.Ordinals
+          ],
           message: 'Light Waves: address for Ordinals and payments',
-          network: { type: BitcoinNetworkType.Mainnet }
+          network: { type: window.SatsConnect.BitcoinNetworkType.Mainnet }
         },
         onFinish: ({ addresses }) => {
+          console.log('[ME][Wix] addresses', addresses);
           const ord = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
           const pay = addresses.find(a => a.purpose === 'payment') || ord;
 
@@ -831,13 +842,11 @@ async function connectXverse() {
         onCancel: () => window.showError('ME connect cancelled')
       });
     } catch (err) {
-      console.error('[ME] error:', err);
+      console.error('[ME][Wix] error', err);
       window.showError('Failed to connect Magic Eden');
     }
   }
-
   window.connectMagicEden = connectMagicEden;
 </script>
 </body>
 </html>
-
