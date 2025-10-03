@@ -609,7 +609,6 @@
         }
 
         async function connectXverse() {
-            // Check all possible locations
             const provider = window.BitcoinProvider || 
                             window.xverseProviders?.BitcoinProvider || 
                             window.xverse;
@@ -620,76 +619,43 @@
             }
             
             try {
-                // Debug: Log what methods are available
-                console.log('Xverse provider:', provider);
-                console.log('Xverse methods:', Object.keys(provider));
+                // First, call connect to establish connection
+                console.log('Calling Xverse connect...');
+                await provider.connect();
+                console.log('Connected to Xverse');
                 
-                // Check if there's a different method name
-                if (provider.connect && typeof provider.connect === 'function') {
-                    console.log('Found connect method, trying it first');
-                    await provider.connect();
-                }
+                // Now request addresses
+                const response = await provider.request('getAddresses', {
+                    purposes: ['ordinals', 'payment'],
+                    message: 'Light Waves Reveals needs access to your addresses'
+                });
                 
-                // Try different request formats
-                let response;
+                console.log('Xverse getAddresses response:', response);
                 
-                // Format 1: Direct request
-                try {
-                    response = await provider.request('getAddresses', null);
-                    console.log('Format 1 response:', response);
-                } catch (e1) {
-                    console.log('Format 1 failed:', e1);
+                if (response.result) {
+                    const addresses = response.result;
+                    const ordAddress = addresses.find(a => a.purpose === 'ordinals');
+                    const payAddress = addresses.find(a => a.purpose === 'payment');
                     
-                    // Format 2: With empty params
-                    try {
-                        response = await provider.request('getAddresses', {});
-                        console.log('Format 2 response:', response);
-                    } catch (e2) {
-                        console.log('Format 2 failed:', e2);
+                    if (ordAddress) {
+                        connectedWallet = {
+                            type: 'xverse',
+                            ordinalsAddress: ordAddress.address,
+                            paymentAddress: payAddress ? payAddress.address : ordAddress.address,
+                            ordPub: ordAddress.publicKey || '',
+                            payPub: payAddress ? payAddress.publicKey : ordAddress.publicKey || '',
+                            provider: provider
+                        };
                         
-                        // Format 3: Old API style
-                        if (provider.getAddresses) {
-                            response = await provider.getAddresses();
-                            console.log('Format 3 response:', response);
-                        } else {
-                            throw e1; // Throw original error
-                        }
-                    }
-                }
-                
-                // Handle response regardless of format
-                if (response) {
-                    // Check different response structures
-                    const addresses = response.result || response.addresses || response;
-                    
-                    if (Array.isArray(addresses)) {
-                        const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-                        const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
-                        
-                        if (ordAddress) {
-                            connectedWallet = {
-                                type: 'xverse',
-                                ordinalsAddress: ordAddress.address,
-                                paymentAddress: payAddress ? payAddress.address : ordAddress.address,
-                                ordPub: ordAddress.publicKey || '',
-                                payPub: payAddress ? payAddress.publicKey : ordAddress.publicKey || '',
-                                provider: provider
-                            };
-                            
-                            onWalletConnected();
-                        }
+                        onWalletConnected();
                     }
                 }
             } catch (error) {
-                console.error('Xverse final error:', error);
-                
-                // Check for specific error codes
-                if (error.code === -32002 || error.error?.code === -32002) {
-                    showError('Xverse denied access. Try disconnecting and reconnecting the site in your wallet settings.');
-                } else if (error.code === -32601) {
-                    showError('Method not found. Your Xverse wallet may need to be updated.');
+                console.error('Xverse error:', error);
+                if (error.code === -32002) {
+                    showError('Connection denied. Please approve the connection in Xverse.');
                 } else {
-                    showError('Failed to connect Xverse. Check console for details.');
+                    showError('Failed to connect Xverse');
                 }
             }
         }
