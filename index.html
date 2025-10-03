@@ -471,23 +471,32 @@
     </div>
 
     <script>
-        // FIX 1: Correct iframe detection - fix the domain format
+        // FIX 1: Correct iframe detection
         (function () {
             const isEmbedded = window.top !== window.self;
             const ref = document.referrer || '';
-            // FIXED: Removed the duplicate .io extension
+            // FIXED: Use your actual domain here
             const allowHosts = [
                 'kanetix.io',
-                'lights-waves-reveal.io'  // If this is a separate domain
+                'localhost'  // For testing
             ];
             const allowed = allowHosts.some(h => ref.includes(h));
             
-            // Only redirect if embedded AND not from allowed hosts
+            // Allow embedding from specified hosts
             if (isEmbedded && !allowed) {
-                // Allow the page to be embedded - don't redirect
-                console.log('Page is embedded from:', ref);
+                console.log('Page embedded from non-allowed host:', ref);
+                // Optionally redirect or show warning
+                // window.top.location = window.location;
             }
         })();
+
+        // Simple JWT-like token creator (simplified version of jsontokens)
+        function createUnsecuredToken(payload) {
+            const header = { typ: 'JWT', alg: 'none' };
+            const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '');
+            const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '');
+            return `${encodedHeader}.${encodedPayload}.`;
+        }
 
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
         const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
@@ -498,71 +507,12 @@
         let unrevealedLightWaves = [];
         let walletCheckInterval = null;
 
-        // Dynamically load SatsConnect with fallback
-        function loadSatsConnect() {
-            return new Promise((resolve, reject) => {
-                // Check if already loaded
-                if (window.SatsConnect) {
-                    console.log('SatsConnect already loaded');
-                    return resolve();
-                }
-
-                const urls = [
-                    'https://unpkg.com/sats-connect@3.6.1/dist/index.umd.js',
-                    'https://unpkg.com/sats-connect/dist/index.umd.js',
-                    'https://cdn.jsdelivr.net/npm/sats-connect@3.6.1/dist/index.umd.js'
-                ];
-
-                let currentIndex = 0;
-
-                function tryNextUrl() {
-                    if (currentIndex >= urls.length) {
-                        return reject(new Error('Failed to load SatsConnect from all CDNs'));
-                    }
-
-                    const script = document.createElement('script');
-                    script.src = urls[currentIndex];
-                    script.async = true;
-                    
-                    script.onload = () => {
-                        // Give it a moment to initialize
-                        setTimeout(() => {
-                            if (window.SatsConnect) {
-                                console.log('SatsConnect loaded successfully from:', urls[currentIndex]);
-                                resolve();
-                            } else {
-                                currentIndex++;
-                                tryNextUrl();
-                            }
-                        }, 100);
-                    };
-
-                    script.onerror = () => {
-                        console.warn('Failed to load from:', urls[currentIndex]);
-                        currentIndex++;
-                        tryNextUrl();
-                    };
-
-                    document.head.appendChild(script);
-                }
-
-                tryNextUrl();
-            });
-        }
-
-        // Initialize after DOM and SatsConnect are ready
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', function() {
             setupEventHandlers();
-            
-            try {
-                await loadSatsConnect();
-                console.log('SatsConnect loaded, checking wallets...');
+            // Start checking for wallets after a short delay
+            setTimeout(() => {
                 checkWalletsRepeatedly();
-            } catch (error) {
-                console.error('Failed to load SatsConnect:', error);
-                // Still check for non-MagicEden wallets
-                checkWalletsRepeatedly();
-            }
+            }, 500);
         });
 
         function checkWalletsRepeatedly() {
@@ -590,7 +540,6 @@
                 xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
                 unisat: !!window.unisat,
                 leather: !!window.LeatherProvider,
-                // FIX 2: Proper MagicEden detection
                 magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
             };
             
@@ -767,70 +716,107 @@
             }
         }
 
-        // FIX 3: Properly integrated MagicEden connection
+        // FIX 2: Direct MagicEden connection without SatsConnect dependency
         async function connectMagicEden() {
             try {
-                // Try to load SatsConnect if not already loaded
-                if (!window.SatsConnect) {
-                    console.log('SatsConnect not loaded, attempting to load...');
-                    await loadSatsConnect();
-                }
-
-                // Check again after loading
-                if (!window.SatsConnect) {
-                    console.error('SatsConnect still not available');
-                    showError('Unable to load wallet connection library. Please refresh and try again.');
-                    return;
-                }
-
-                // Get the MagicEden provider
                 const provider = window.magicEden?.bitcoin;
                 if (!provider || !provider.isMagicEden) {
                     showError('Magic Eden wallet not detected. Please install the Magic Eden browser extension.');
                     return;
                 }
 
-                console.log('Connecting to MagicEden with SatsConnect version:', window.SatsConnect?.version || 'unknown');
+                console.log('Connecting to MagicEden directly...');
 
-                // Use SatsConnect with explicit provider
-                window.SatsConnect.getAddress({
-                    getProvider: () => provider,  // Critical: Pass the provider explicitly
-                    payload: {
-                        purposes: [
-                            window.SatsConnect.AddressPurpose.Payment,
-                            window.SatsConnect.AddressPurpose.Ordinals
-                        ],
-                        message: 'Light Waves: address for Ordinals and payments',
-                        network: { 
-                            type: window.SatsConnect.BitcoinNetworkType.Mainnet 
-                        }
-                    },
-                    onFinish: ({ addresses }) => {
-                        console.log('MagicEden addresses received:', addresses);
-                        
-                        const ord = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-                        const pay = addresses.find(a => a.purpose === 'payment') || ord;
-
-                        connectedWallet = {
-                            type: 'magiceden',
-                            ordinalsAddress: ord.address,
-                            paymentAddress: pay.address,
-                            ordPub: ord.publicKey || '',
-                            payPub: pay.publicKey || ord.publicKey || '',
-                            provider
-                        };
-                        
-                        onWalletConnected();
-                    },
-                    onCancel: () => {
-                        console.log('MagicEden connection cancelled');
-                        showError('Connection cancelled');
+                // Method 1: Try using direct provider request (as documented)
+                try {
+                    // Create the payload for connection
+                    const payload = {
+                        purposes: ['payment', 'ordinals'],
+                        message: 'Light Waves: connect for reveal'
+                    };
+                    
+                    // Create unsigned token as per MagicEden docs
+                    const request = createUnsecuredToken(payload);
+                    
+                    console.log('Sending connect request to MagicEden provider...');
+                    
+                    // Try the direct provider method
+                    const response = await provider.connect(request);
+                    
+                    if (response && response.addresses) {
+                        handleMagicEdenResponse(response.addresses);
+                        return;
                     }
-                });
+                } catch (e1) {
+                    console.log('Method 1 failed, trying alternative method...', e1);
+                }
+
+                // Method 2: Try wallet_connect like other wallets
+                try {
+                    const resp = await provider.request('wallet_connect', {
+                        addresses: ['ordinals', 'payment'],
+                        network: 'Mainnet',
+                        message: 'Light Waves: connect for reveal'
+                    });
+
+                    if (resp?.result?.addresses?.length) {
+                        handleMagicEdenResponse(resp.result.addresses);
+                        return;
+                    }
+                } catch (e2) {
+                    console.log('Method 2 failed, trying getAccounts...', e2);
+                }
+
+                // Method 3: Try getAccounts method
+                try {
+                    const accounts = await provider.getAccounts();
+                    if (accounts && accounts.length > 0) {
+                        const addresses = accounts.map(acc => ({
+                            address: acc.address,
+                            purpose: acc.purpose || 'ordinals',
+                            publicKey: acc.publicKey
+                        }));
+                        handleMagicEdenResponse(addresses);
+                        return;
+                    }
+                } catch (e3) {
+                    console.log('Method 3 failed', e3);
+                }
+
+                // If all methods fail, show error
+                showError('Failed to connect to Magic Eden wallet. Please try refreshing the page and ensure the wallet is unlocked.');
+                
             } catch (err) {
                 console.error('MagicEden error:', err);
                 showError('Failed to connect Magic Eden: ' + err.message);
             }
+        }
+
+        function handleMagicEdenResponse(addresses) {
+            console.log('MagicEden addresses received:', addresses);
+            
+            const ord = addresses.find(a => 
+                a.purpose === 'ordinals' || 
+                a.type === 'p2tr' || 
+                (a.address && a.address.startsWith('bc1p'))
+            ) || addresses[0];
+            
+            const pay = addresses.find(a => 
+                a.purpose === 'payment' || 
+                a.type === 'p2wpkh' || 
+                (a.address && a.address.startsWith('bc1q'))
+            ) || ord;
+
+            connectedWallet = {
+                type: 'magiceden',
+                ordinalsAddress: ord.address,
+                paymentAddress: pay.address,
+                ordPub: ord.publicKey || '',
+                payPub: pay.publicKey || ord.publicKey || '',
+                provider: window.magicEden.bitcoin
+            };
+            
+            onWalletConnected();
         }
 
         function onWalletConnected() {
