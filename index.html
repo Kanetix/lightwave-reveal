@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Light Waves Reveals</title>
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://blockstream.info;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https:;
+        connect-src 'self' https://blockstream.info https://*.blockstream.info https://api.hiro.so;
+        frame-ancestors 'none';
+        form-action 'none';
+    ">
+    
     <style>
         * {
             margin: 0;
@@ -479,6 +491,15 @@
     </div>
 
     <script>
+        // Security: Prevent clickjacking
+        if (window.top !== window.self) {
+            window.top.location = window.self.location;
+        }
+
+        // Security: Freeze important objects
+        Object.freeze(Object.prototype);
+        Object.freeze(Array.prototype);
+
         // Configuration
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
         const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
@@ -524,10 +545,10 @@
         function detectWallets() {
             // Check each wallet with better detection
             const wallets = {
-                xverse: !!(window.BitcoinProvider || window.xverse), // Xverse may use BitcoinProvider
+                xverse: !!window.BitcoinProvider, // Xverse uses BitcoinProvider
                 unisat: !!window.unisat,
                 leather: !!window.LeatherProvider,
-                magiceden: !!(window.magicEden && window.magicEden.bitcoin)
+                magiceden: !!(window.magicEden && (window.magicEden.bitcoin || window.magicEden.solana)) // ME might have different structure
             };
             
             // Update status for each wallet
@@ -537,11 +558,8 @@
             updateWalletStatus('magiceden', wallets.magiceden);
             
             console.log('Detected wallets:', wallets);
-            
-            // Debug log to check what's available
             console.log('Window objects:', {
                 BitcoinProvider: window.BitcoinProvider,
-                xverse: window.xverse,
                 unisat: window.unisat,
                 LeatherProvider: window.LeatherProvider,
                 magicEden: window.magicEden
@@ -609,22 +627,26 @@
         }
 
         async function connectXverse() {
-            // Check both possible Xverse objects
-            const xverseProvider = window.BitcoinProvider || window.xverse;
-            
-            if (!xverseProvider) {
-                showError('Xverse wallet not detected. Please install the browser extension.');
+            // Xverse uses BitcoinProvider
+            if (!window.BitcoinProvider) {
+                showError('Xverse wallet not detected');
                 return;
             }
             
             try {
-                const response = await xverseProvider.request('getAddresses', {
+                // First connect
+                await window.BitcoinProvider.connect();
+                
+                // Then get addresses
+                const response = await window.BitcoinProvider.request('getAddresses', {
                     purposes: ['ordinals', 'payment'],
                     message: 'Connect to Light Waves Reveals'
                 });
                 
-                if (response.status === 'success') {
-                    const addresses = response.result.addresses;
+                console.log('Xverse response:', response);
+                
+                if (response && response.result) {
+                    const addresses = response.result.addresses || response.result;
                     const ordAddress = addresses.find(a => a.purpose === 'ordinals');
                     const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
                     
@@ -634,24 +656,24 @@
                         paymentAddress: payAddress.address,
                         ordPub: ordAddress.publicKey,
                         payPub: payAddress.publicKey,
-                        provider: xverseProvider
+                        provider: window.BitcoinProvider
                     };
                     
                     onWalletConnected();
                 }
             } catch (error) {
-                console.error('Xverse connection error:', error);
+                console.error('Xverse error:', error);
                 if (error.message && error.message.includes('User rejected')) {
-                    showError('Connection cancelled by user');
+                    showError('Connection cancelled');
                 } else {
-                    showError('Failed to connect Xverse wallet. Please try again.');
+                    showError('Connection failed');
                 }
             }
         }
 
         async function connectUnisat() {
             if (!window.unisat) {
-                showError('Unisat wallet not detected. Please install the browser extension.');
+                showError('Unisat wallet not detected');
                 return;
             }
             
@@ -670,18 +692,17 @@
                 
                 onWalletConnected();
             } catch (error) {
-                console.error('Unisat connection error:', error);
                 if (error.message && error.message.includes('User rejected')) {
-                    showError('Connection cancelled by user');
+                    showError('Connection cancelled');
                 } else {
-                    showError('Failed to connect Unisat wallet. Please try again.');
+                    showError('Connection failed');
                 }
             }
         }
 
         async function connectLeather() {
             if (!window.LeatherProvider) {
-                showError('Leather wallet not detected. Please install the browser extension.');
+                showError('Leather wallet not detected');
                 return;
             }
             
@@ -694,7 +715,7 @@
                     const payment = addresses.find(a => a.type === 'p2wpkh') || taproot;
                     
                     if (!taproot) {
-                        showError('Please enable Taproot addresses in your Leather wallet settings.');
+                        showError('Enable Taproot addresses in Leather wallet');
                         return;
                     }
                     
@@ -710,65 +731,47 @@
                     onWalletConnected();
                 }
             } catch (error) {
-                console.error('Leather connection error:', error);
                 if (error.message && error.message.includes('User rejected')) {
-                    showError('Connection cancelled by user');
+                    showError('Connection cancelled');
                 } else {
-                    showError('Failed to connect Leather wallet. Please try again.');
+                    showError('Connection failed');
                 }
             }
         }
 
         async function connectMagicEden() {
-            if (!window.magicEden?.bitcoin) {
-                showError('Magic Eden wallet not detected. Please make sure you are logged into the Magic Eden browser extension.');
+            if (!window.magicEden) {
+                showError('Magic Eden wallet not detected');
                 return;
             }
             
             try {
-                const provider = window.magicEden.bitcoin;
+                console.log('Magic Eden object:', window.magicEden);
                 
-                // Get addresses - Magic Eden may not require explicit connect
-                const response = await provider.getAddresses();
+                // Magic Eden has a different API structure
+                // They might not have implemented Bitcoin support yet
+                // or it might be under a different property
                 
-                if (response && response.addresses) {
-                    const addresses = response.addresses;
-                    const ord = addresses.find(a => a.purpose === 'ordinals');
-                    const pay = addresses.find(a => a.purpose === 'payment') || ord;
-                    
-                    if (!ord) {
-                        showError('Could not get ordinals address from Magic Eden wallet.');
-                        return;
-                    }
-                    
-                    connectedWallet = {
-                        type: 'magiceden',
-                        ordinalsAddress: ord.address,
-                        paymentAddress: pay.address,
-                        ordPub: ord.publicKey,
-                        payPub: pay.publicKey,
-                        provider: provider
-                    };
-                    
-                    onWalletConnected();
+                // Try different possible APIs
+                if (window.magicEden.connect) {
+                    await window.magicEden.connect();
+                }
+                
+                // Check if they have a request method
+                if (window.magicEden.request) {
+                    const response = await window.magicEden.request({
+                        method: 'getAddresses',
+                        params: []
+                    });
+                    console.log('ME response:', response);
                 } else {
-                    showError('Invalid response from Magic Eden wallet.');
+                    showError('Magic Eden Bitcoin support not available');
+                    return;
                 }
-            } catch (error) {
-                console.error('MagicEden connection error:', error);
                 
-                // Try alternative connection method
-                try {
-                    await window.magicEden.bitcoin.connect();
-                    // Try again after connecting
-                    connectMagicEden();
-                } catch (connectError) {
-                    if (error.message && error.message.includes('User rejected')) {
-                        showError('Connection cancelled by user');
-                    } else {
-                        showError('Failed to connect Magic Eden wallet. Please make sure you are logged in.');
-                    }
-                }
+            } catch (error) {
+                console.error('Magic Eden error:', error);
+                showError('Magic Eden wallet not properly configured for Bitcoin');
             }
         }
 
@@ -818,9 +821,8 @@
                 }
                 
             } catch (error) {
-                console.error('Error loading Light Waves:', error);
                 document.getElementById('loadingBox').classList.add('hidden');
-                showError('Failed to load Light Waves. Please check your connection and try again.');
+                showError('Failed to load Light Waves');
             }
         }
 
@@ -872,9 +874,8 @@
         }
 
         function revealSelected() {
-            console.log('Revealing selected Light Waves:', Array.from(selectedLightWaves));
-            // Here you would implement the actual reveal logic
-            showError('Reveal functionality coming soon! Selected: ' + Array.from(selectedLightWaves).join(', '));
+            // Implement actual reveal logic here
+            showError('Reveal functionality coming soon!');
         }
 
         function showError(message) {
