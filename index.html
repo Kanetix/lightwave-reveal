@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Light Wave Reveal</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        #mainContainer {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        
+        #headerSection {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+        }
+        
+        #connectWalletBtn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        #connectWalletBtn:hover {
+            background: #2563eb;
+        }
+        
+        #walletAddress {
+            color: #3b82f6;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-left: 20px;
+        }
+        
+        /* Wallet Selection Popup */
+        #walletOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 999;
+        }
+        
+        #walletSelectionBox {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        #walletSelectionBox h3 {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .wallet-option {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            padding: 16px;
+            margin: 10px 0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .wallet-option:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+        
+        /* Messages */
+        #noWalletsMsg, #errorBox {
+            background: #7f1d1d;
+            border: 1px solid #dc2626;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #fecaca;
+            margin: 20px 0;
+        }
+        
+        #loadingBox {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        #emptyMessage {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            margin: 20px 0;
+        }
+        
+        /* Light Waves Section */
+        #lightwavesSection {
+            margin-top: 30px;
+        }
+        
+        #lightwavesSection h2 {
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .lightwave-item {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            padding: 16px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+        
+        .lightwave-item:hover {
+            border-color: #3b82f6;
+        }
+        
+        .lightwave-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+        
+        .lw-number {
+            color: white;
+            font-weight: 600;
+        }
+        
+        .lw-status {
+            color: #666;
+            font-size: 14px;
+            margin-left: auto;
+        }
+        
+        /* Reveal Section */
+        #revealSection {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 30px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        #selectedCount {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        #totalCost {
+            color: #3b82f6;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        #revealBtn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        #revealBtn:hover {
+            background: #059669;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="mainContainer">
+        <!-- Header Section -->
+        <div id="headerSection">
+            <button id="connectWalletBtn">Connect Wallet</button>
+            <span id="walletAddress" class="hidden"></span>
+        </div>
+
+        <!-- Wallet Selection Popup -->
+        <div id="walletOverlay">
+            <div id="walletSelectionBox">
+                <h3>Select your wallet</h3>
+                <div id="xverseOption" class="wallet-option">Xverse</div>
+                <div id="unisatOption" class="wallet-option">Unisat</div>
+                <div id="leatherOption" class="wallet-option">Leather</div>
+                <div id="magicedenOption" class="wallet-option">MagicEden</div>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="noWalletsMsg" class="hidden">
+            No Bitcoin wallets detected. Please install Xverse, Unisat, Leather, or MagicEden.
+        </div>
+        
+        <div id="loadingBox" class="hidden">
+            Loading Light Waves...
+        </div>
+
+        <!-- Light Waves Section -->
+        <div id="lightwavesSection" class="hidden">
+            <h2>Unrevealed Light Waves</h2>
+            <div id="lightwavesRepeater">
+                <!-- Items will be added here by JavaScript -->
+            </div>
+            <div id="emptyMessage" class="hidden">
+                No unrevealed Light Waves found in this wallet
+            </div>
+        </div>
+
+        <!-- Reveal Section -->
+        <div id="revealSection" class="hidden">
+            <div id="selectedCount"></div>
+            <div id="totalCost"></div>
+            <button id="revealBtn">Reveal Selected Light Waves</button>
+        </div>
+
+        <!-- Error Box -->
+        <div id="errorBox" class="hidden">
+            <span id="errorMessage"></span>
+        </div>
+    </div>
+
+    <script>
+        // Your original JavaScript code goes here
+        // For now, I'll add basic functionality
+        
+        const BLOCKSTREAM_API = 'https://blockstream.info/api';
+        const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
+        const MIN_PADDING_SATS = 330;
+
+        let connectedWallet = null;
+        let selectedLightWaves = new Set();
+        let unrevealedLightWaves = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventHandlers();
+            detectWallets();
+        });
+
+        function setupEventHandlers() {
+            // Connect wallet button
+            document.getElementById('connectWalletBtn').addEventListener('click', showWalletSelection);
+            
+            // Wallet options
+            document.getElementById('xverseOption').addEventListener('click', () => connectXverse());
+            document.getElementById('unisatOption').addEventListener('click', () => connectUnisat());
+            document.getElementById('leatherOption').addEventListener('click', () => connectLeather());
+            document.getElementById('magicedenOption').addEventListener('click', () => connectMagicEden());
+            
+            // Close overlay when clicking outside
+            document.getElementById('walletOverlay').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
+                }
+            });
+            
+            // Reveal button
+            document.getElementById('revealBtn').addEventListener('click', revealSelected);
+        }
+
+        function detectWallets() {
+            const wallets = [];
+            if (window.unisat) wallets.push('unisat');
+            if (window.xverse) wallets.push('xverse');
+            if (window.LeatherProvider) wallets.push('leather');
+            if (window.magicEden?.bitcoin) wallets.push('magiceden');
+            
+            console.log('Detected wallets:', wallets);
+            return wallets;
+        }
+
+        function showWalletSelection() {
+            const wallets = detectWallets();
+            
+            if (wallets.length === 0) {
+                document.getElementById('noWalletsMsg').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('noWalletsMsg').classList.add('hidden');
+                }, 5000);
+                return;
+            }
+            
+            // Show/hide wallet options based on detection
+            document.getElementById('xverseOption').style.display = wallets.includes('xverse') ? 'block' : 'none';
+            document.getElementById('unisatOption').style.display = wallets.includes('unisat') ? 'block' : 'none';
+            document.getElementById('leatherOption').style.display = wallets.includes('leather') ? 'block' : 'none';
+            document.getElementById('magicedenOption').style.display = wallets.includes('magiceden') ? 'block' : 'none';
+            
+            document.getElementById('walletOverlay').style.display = 'block';
+        }
+
+        async function connectXverse() {
+            try {
+                const response = await window.xverse.request('getAddresses');
+                if (response.status === 'success') {
+                    const addresses = response.result.addresses;
+                    const ordAddress = addresses.find(a => a.purpose === 'ordinals');
+                    const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
+                    
+                    connectedWallet = {
+                        type: 'xverse',
+                        ordinalsAddress: ordAddress.address,
+                        paymentAddress: payAddress.address,
+                        ordPub: ordAddress.publicKey,
+                        payPub: payAddress.publicKey,
+                        provider: window.xverse
+                    };
+                    
+                    onWalletConnected();
+                }
+            } catch (error) {
+                console.error('Xverse connection error:', error);
+                showError('Failed to connect Xverse wallet');
+            }
+        }
+
+        async function connectUnisat() {
+            try {
+                const accounts = await window.unisat.requestAccounts();
+                const publicKey = await window.unisat.getPublicKey();
+                
+                connectedWallet = {
+                    type: 'unisat',
+                    ordinalsAddress: accounts[0],
+                    paymentAddress: accounts[0],
+                    ordPub: publicKey,
+                    payPub: publicKey,
+                    provider: window.unisat
+                };
+                
+                onWalletConnected();
+            } catch (error) {
+                console.error('Unisat connection error:', error);
+                showError('Failed to connect Unisat wallet');
+            }
+        }
+
+        async function connectLeather() {
+            try {
+                const response = await window.LeatherProvider.request('getAddresses');
+                if (response.status === 'success') {
+                    const taproot = response.result.addresses.find(a => a.type === 'p2tr');
+                    const payment = response.result.addresses.find(a => a.type === 'p2wpkh') || taproot;
+                    
+                    connectedWallet = {
+                        type: 'leather',
+                        ordinalsAddress: taproot.address,
+                        paymentAddress: payment.address,
+                        ordPub: taproot.publicKey,
+                        payPub: payment.publicKey,
+                        provider: window.LeatherProvider
+                    };
+                    
+                    onWalletConnected();
+                }
+            } catch (error) {
+                console.error('Leather connection error:', error);
+                showError('Failed to connect Leather wallet');
+            }
+        }
+
+        async function connectMagicEden() {
+            try {
+                await window.magicEden.bitcoin.connect();
+                const addresses = await window.magicEden.bitcoin.getAddresses();
+                const ord = addresses.addresses.find(a => a.purpose === 'ordinals');
+                const pay = addresses.addresses.find(a => a.purpose === 'payment') || ord;
+                
+                connectedWallet = {
+                    type: 'magiceden',
+                    ordinalsAddress: ord.address,
+                    paymentAddress: pay.address,
+                    ordPub: ord.publicKey,
+                    payPub: pay.publicKey,
+                    provider: window.magicEden.bitcoin
+                };
+                
+                onWalletConnected();
+            } catch (error) {
+                console.error('MagicEden connection error:', error);
+                showError('Failed to connect MagicEden wallet');
+            }
+        }
+
+        function onWalletConnected() {
+            // Hide wallet selection
+            document.getElementById('walletOverlay').style.display = 'none';
+            
+            // Update UI
+            document.getElementById('connectWalletBtn').style.display = 'none';
+            document.getElementById('walletAddress').textContent = 
+                connectedWallet.ordinalsAddress.slice(0, 6) + '...' + 
+                connectedWallet.ordinalsAddress.slice(-4);
+            document.getElementById('walletAddress').classList.remove('hidden');
+            
+            // Load Light Waves
+            loadUnrevealedLightWaves();
+        }
+
+        async function loadUnrevealedLightWaves() {
+            document.getElementById('loadingBox').classList.remove('hidden');
+            document.getElementById('lightwavesSection').classList.add('hidden');
+            
+            try {
+                const response = await fetch(`${BLOCKSTREAM_API}/address/${connectedWallet.ordinalsAddress}/utxo`);
+                const utxos = await response.json();
+                
+                // For demo purposes, show mock data
+                // In production, you'd check each UTXO for Light Wave inscriptions
+                unrevealedLightWaves = [
+                    { id: '1', number: '#1234', status: 'UNREVEALED' },
+                    { id: '2', number: '#5678', status: 'UNREVEALED' },
+                    { id: '3', number: '#9012', status: 'UNREVEALED' }
+                ];
+                
+                document.getElementById('loadingBox').classList.add('hidden');
+                
+                if (unrevealedLightWaves.length === 0) {
+                    document.getElementById('emptyMessage').classList.remove('hidden');
+                    document.getElementById('lightwavesSection').classList.remove('hidden');
+                } else {
+                    displayLightWaves(unrevealedLightWaves);
+                    document.getElementById('lightwavesSection').classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error('Error loading Light Waves:', error);
+                document.getElementById('loadingBox').classList.add('hidden');
+                showError('Failed to load Light Waves');
+            }
+        }
+
+        function displayLightWaves(lightWaves) {
+            const repeater = document.getElementById('lightwavesRepeater');
+            repeater.innerHTML = '';
+            
+            lightWaves.forEach((lw, index) => {
+                const item = document.createElement('div');
+                item.className = 'lightwave-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="lw-check-${index}" data-id="${lw.id}">
+                    <span class="lw-number">${lw.number}</span>
+                    <span class="lw-status">${lw.status}</span>
+                `;
+                
+                const checkbox = item.querySelector('input');
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedLightWaves.add(lw.id);
+                    } else {
+                        selectedLightWaves.delete(lw.id);
+                    }
+                    updateRevealUI();
+                });
+                
+                repeater.appendChild(item);
+            });
+        }
+
+        function updateRevealUI() {
+            const count = selectedLightWaves.size;
+            if (count > 0) {
+                document.getElementById('revealSection').classList.remove('hidden');
+                document.getElementById('selectedCount').textContent = `${count} Light Waves selected`;
+                updateFeeEstimate();
+            } else {
+                document.getElementById('revealSection').classList.add('hidden');
+            }
+        }
+
+        function updateFeeEstimate() {
+            const count = selectedLightWaves.size;
+            const baseCost = count * MIN_PADDING_SATS;
+            const networkFee = Math.ceil(count * 200 * 20);
+            const totalCost = baseCost + networkFee;
+            
+            document.getElementById('totalCost').textContent = `Total: ${totalCost.toLocaleString()} sats`;
+        }
+
+        function revealSelected() {
+            console.log('Revealing selected Light Waves:', Array.from(selectedLightWaves));
+            showError('Reveal functionality coming soon!');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorBox').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('errorBox').classList.add('hidden');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
