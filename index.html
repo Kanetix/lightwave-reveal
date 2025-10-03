@@ -650,58 +650,71 @@
             }
         }
         
-       async function connectMagicEden() {
-        const provider = window.magicEden?.bitcoin;
-        
-        if (!provider) {
-            showError('Magic Eden wallet not detected. Please make sure Bitcoin is enabled in Magic Eden.');
-            return;
-        }
-        
-        try {
-            // Log available methods to debug
-            console.log('Magic Eden provider methods:', Object.keys(provider));
-            console.log('Magic Eden provider:', provider);
+        async function connectMagicEden() {
+            const provider = window.magicEden?.bitcoin;
             
-            // Try the simplest connection method
-            await provider.connect();
-            
-            // Check for address in different ways
-            let address;
-            
-            if (provider.selectedAddress) {
-                address = provider.selectedAddress;
-            } else if (provider.address) {
-                address = provider.address;
-            } else if (provider.publicKey) {
-                // Some wallets provide public key instead of address
-                // We'd need to derive the address from it
-                console.log('Magic Eden has publicKey but no address');
-            }
-            
-            if (!address) {
-                // Last resort - prompt user
-                showError('Magic Eden connected but no address found. Please ensure Bitcoin is enabled in your Magic Eden wallet settings.');
+            if (!provider) {
+                showError('Magic Eden wallet not detected');
                 return;
             }
             
-            connectedWallet = {
-                type: 'magiceden',
-                ordinalsAddress: address,
-                paymentAddress: address,
-                ordPub: provider.publicKey || '',
-                payPub: provider.publicKey || '',
-                provider: provider
-            };
-            
-            onWalletConnected();
-            
-        } catch (error) {
-            console.error('Magic Eden error:', error);
-            showError('Failed to connect Magic Eden. Please ensure you are logged in and Bitcoin is enabled.');
+            try {
+                // Debug what's available
+                console.log('Magic Eden provider:', provider);
+                console.log('Magic Eden methods:', Object.keys(provider));
+                console.log('Provider type:', typeof provider);
+                
+                // Check for different possible methods
+                if (typeof provider === 'object') {
+                    for (const [key, value] of Object.entries(provider)) {
+                        console.log(`${key}:`, typeof value, value);
+                    }
+                }
+                
+                // Try connect if it exists
+                if (provider.connect && typeof provider.connect === 'function') {
+                    await provider.connect();
+                    console.log('Connected to Magic Eden');
+                }
+                
+                // Look for any address property
+                let address;
+                const possibleAddressKeys = ['selectedAddress', 'address', 'account', 'accounts', 'publicKey'];
+                
+                for (const key of possibleAddressKeys) {
+                    if (provider[key]) {
+                        console.log(`Found ${key}:`, provider[key]);
+                        if (typeof provider[key] === 'string') {
+                            address = provider[key];
+                            break;
+                        } else if (Array.isArray(provider[key]) && provider[key].length > 0) {
+                            address = provider[key][0];
+                            break;
+                        }
+                    }
+                }
+                
+                if (address) {
+                    connectedWallet = {
+                        type: 'magiceden',
+                        ordinalsAddress: address,
+                        paymentAddress: address,
+                        ordPub: '',
+                        payPub: '',
+                        provider: provider
+                    };
+                    
+                    onWalletConnected();
+                } else {
+                    showError('Magic Eden wallet detected but no Bitcoin address found. Please ensure Bitcoin is enabled in Magic Eden.');
+                }
+                
+            } catch (error) {
+                console.error('Magic Eden error:', error);
+                showError('Failed to connect Magic Eden');
+            }
         }
-    }
-
+        
         async function connectUnisat() {
             if (!window.unisat) {
                 showError('Unisat wallet not detected');
