@@ -559,34 +559,44 @@
             const optionEl = document.getElementById(walletName + 'Option');
             
             if (statusEl && optionEl) {
-                if (isDetected) {
-                    statusEl.textContent = 'Ready';
-                    statusEl.style.color = '#10b981';
-                    optionEl.classList.remove('disabled');
-                    
-                    // Remove old listeners
-                    optionEl.replaceWith(optionEl.cloneNode(true));
-                    const newOptionEl = document.getElementById(walletName + 'Option');
-                    
-                    // Add new listeners
-                    switch(walletName) {
-                        case 'xverse':
-                            newOptionEl.addEventListener('click', () => connectXverse());
-                            break;
-                        case 'unisat':
-                            newOptionEl.addEventListener('click', () => connectUnisat());
-                            break;
-                        case 'leather':
-                            newOptionEl.addEventListener('click', () => connectLeather());
-                            break;
-                        case 'magiceden':
-                            newOptionEl.addEventListener('click', () => connectMagicEden());
-                            break;
+                // Check if status actually changed
+                const currentStatus = statusEl.textContent;
+                const newStatus = isDetected ? 'Ready' : 'Not installed';
+                
+                // Only update if status changed
+                if (currentStatus !== newStatus) {
+                    if (isDetected) {
+                        statusEl.textContent = 'Ready';
+                        statusEl.style.color = '#10b981';
+                        optionEl.classList.remove('disabled');
+                        
+                        // Only re-attach listeners if wallet just became available
+                        if (currentStatus !== 'Ready') {
+                            // Remove old listeners by cloning
+                            optionEl.replaceWith(optionEl.cloneNode(true));
+                            const newOptionEl = document.getElementById(walletName + 'Option');
+                            
+                            // Add new listeners
+                            switch(walletName) {
+                                case 'xverse':
+                                    newOptionEl.addEventListener('click', () => connectXverse());
+                                    break;
+                                case 'unisat':
+                                    newOptionEl.addEventListener('click', () => connectUnisat());
+                                    break;
+                                case 'leather':
+                                    newOptionEl.addEventListener('click', () => connectLeather());
+                                    break;
+                                case 'magiceden':
+                                    newOptionEl.addEventListener('click', () => connectMagicEden());
+                                    break;
+                            }
+                        }
+                    } else {
+                        statusEl.textContent = 'Not installed';
+                        statusEl.style.color = '#666';
+                        optionEl.classList.add('disabled');
                     }
-                } else {
-                    statusEl.textContent = 'Not installed';
-                    statusEl.style.color = '#666';
-                    optionEl.classList.add('disabled');
                 }
             }
         }
