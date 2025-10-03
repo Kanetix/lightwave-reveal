@@ -806,7 +806,11 @@ async function connectXverse() {
                 'isMagicEden?', window.magicEden?.bitcoin?.isMagicEden);
   });
 
-  async function connectMagicEden() {
+async function connectMagicEden() {
+    if (!window.SatsConnect) {
+    console.warn('[ME][Wix] SatsConnect not ready yet');
+    return showError('Wallet library is still loading. Try again in a second.');
+    }
     const provider = window.magicEden?.bitcoin;
     if (!provider || !provider.isMagicEden) {
       return showError('Magic Eden wallet not detected');
