@@ -617,13 +617,13 @@
             }
             
             try {
-                // The key issue: Xverse expects null for getAddresses, not an object
-                const response = await provider.request('getAddresses', null);
+                // Use wallet_connect method instead of getAddresses
+                const response = await provider.request('wallet_connect', null);
                 
                 console.log('Xverse response:', response);
                 
-                if (response.status === 'success' && response.result) {
-                    const addresses = response.result;
+                if (response.status === 'success') {
+                    const addresses = response.result.addresses;
                     const ordAddress = addresses.find(a => a.purpose === 'ordinals');
                     const payAddress = addresses.find(a => a.purpose === 'payment');
                     
@@ -642,7 +642,11 @@
                 }
             } catch (error) {
                 console.error('Xverse error:', error);
-                showError('Failed to connect Xverse');
+                if (error.code === -32002 || error.error?.code === -32002) {
+                    showError('Connection denied. Please approve the connection in Xverse.');
+                } else {
+                    showError('Failed to connect Xverse');
+                }
             }
         }
         
