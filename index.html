@@ -608,125 +608,96 @@
             document.getElementById('walletOverlay').style.display = 'none';
         }
 
-        async function connectXverse() {
-            const provider = window.BitcoinProvider || window.xverse;
+      // Fixed Xverse - filter only Bitcoin addresses
+async function connectXverse() {
+    const provider = window.BitcoinProvider || window.xverse;
+    
+    if (!provider) {
+        showError('Xverse wallet not detected');
+        return;
+    }
+    
+    try {
+        const response = await provider.request('wallet_connect', null);
+        
+        if (response.result && response.result.addresses) {
+            const addresses = response.result.addresses;
             
-            if (!provider) {
-                showError('Xverse wallet not detected');
-                return;
-            }
+            // Filter to only get Bitcoin addresses (ordinals and payment)
+            const ordAddress = addresses.find(a => a.purpose === 'ordinals' && a.addressType !== 'stacks');
+            const payAddress = addresses.find(a => a.purpose === 'payment' && a.addressType !== 'stacks');
             
-            try {
-                // Use wallet_connect method
-                const response = await provider.request('wallet_connect', null);
-                
-                console.log('Xverse response:', response);
-                
-                if (response.result && response.result.addresses) {
-                    const addresses = response.result.addresses;
-                    
-                    // Log all addresses to see what we have
-                    console.log('All addresses:', addresses);
-                    
-                    // Find the specific address types
-                    const ordAddress = addresses.find(a => a.purpose === 'ordinals');
-                    const payAddress = addresses.find(a => a.purpose === 'payment');
-                    
-                    if (ordAddress) {
-                        connectedWallet = {
-                            type: 'xverse',
-                            ordinalsAddress: ordAddress.address,
-                            paymentAddress: payAddress ? payAddress.address : ordAddress.address,
-                            ordPub: ordAddress.publicKey || '',
-                            payPub: payAddress ? payAddress.publicKey : '',
-                            provider: provider
-                        };
-                        
-                        onWalletConnected();
-                    } else {
-                        // If no ordinals address, use the first address
-                        const firstAddress = addresses[0];
-                        connectedWallet = {
-                            type: 'xverse',
-                            ordinalsAddress: firstAddress.address,
-                            paymentAddress: firstAddress.address,
-                            ordPub: firstAddress.publicKey || '',
-                            payPub: firstAddress.publicKey || '',
-                            provider: provider
-                        };
-                        
-                        onWalletConnected();
-                    }
-                }
-            } catch (error) {
-                console.error('Xverse error:', error);
-                showError('Failed to connect Xverse');
-            }
-        }
-                
-        async function connectMagicEden() {
-            if (!window.magicEden?.bitcoin) {
-                showError('Magic Eden wallet not detected');
-                return;
-            }
-            
-            try {
-                const provider = window.magicEden.bitcoin;
-                
-                // According to docs, ME uses JSON tokens for requests
-                // First, try to get the provider to inject its methods
-                if (provider.connect && typeof provider.connect === 'function') {
-                    await provider.connect();
-                }
-                
-                // ME uses a different format - they encode payloads as JSON tokens
-                // Try their getAddress method with the token format
-                const jsontokens = {
-                    createUnsecuredToken: (payload) => {
-                        return btoa(JSON.stringify({ payload }));
-                    }
+            if (ordAddress) {
+                connectedWallet = {
+                    type: 'xverse',
+                    ordinalsAddress: ordAddress.address,
+                    paymentAddress: payAddress ? payAddress.address : ordAddress.address,
+                    ordPub: ordAddress.publicKey || '',
+                    payPub: payAddress ? payAddress.publicKey : '',
+                    provider: provider
                 };
                 
-                const payload = {
-                    purposes: ['payment', 'ordinals']
-                };
-                
-                const request = jsontokens.createUnsecuredToken(payload);
-                
-                // Try to call getAddress with the encoded request
-                let response;
-                if (provider.getAddress) {
-                    response = await provider.getAddress(request);
-                } else if (provider.request) {
-                    response = await provider.request('getAddress', request);
-                } else {
-                    // Last resort - check if provider has been updated after connect
-                    console.log('ME provider after connect:', Object.keys(provider));
-                    throw new Error('No suitable method found');
-                }
-                
-                if (response && response.addresses) {
-                    const addresses = response.addresses;
-                    const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-                    
-                    connectedWallet = {
-                        type: 'magiceden',
-                        ordinalsAddress: ordAddress.address,
-                        paymentAddress: ordAddress.address,
-                        ordPub: ordAddress.publicKey || '',
-                        payPub: ordAddress.publicKey || '',
-                        provider: provider
-                    };
-                    
-                    onWalletConnected();
-                }
-            } catch (error) {
-                console.error('Magic Eden error:', error);
-                console.log('Available ME methods:', Object.getOwnPropertyNames(window.magicEden.bitcoin));
-                console.log('ME prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.magicEden.bitcoin)));
-                showError('Magic Eden connection failed. Check console for details.');
+                onWalletConnected();
             }
         }
+    } catch (error) {
+        console.error('Xverse error:', error);
+        showError('Failed to connect Xverse');
+    }
+}
+
+// Fixed Magic Eden - use the call method
+async function connectMagicEden() {
+    const provider = window.magicEden?.bitcoin;
+    
+    if (!provider) {
+        showError('Magic Eden wallet not detected');
+        return;
+    }
+    
+    try {
+        // First connect
+        await provider.connect();
+        
+        // Magic Eden uses the 'call' method for requests
+        const response = await provider.call('getAddress', {
+            purposes: ['payment', 'ordinals']
+        });
+        
+        console.log('Magic Eden response:', response);
+        
+        if (response && response.addresses) {
+            const addresses = response.addresses;
+            const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
+            
+            connectedWallet = {
+                type: 'magiceden',
+                ordinalsAddress: ordAddress.address,
+                paymentAddress: ordAddress.address,
+                ordPub: ordAddress.publicKey || '',
+                payPub: ordAddress.publicKey || '',
+                provider: provider
+            };
+            
+            onWalletConnected();
+        } else if (response && response.address) {
+            // Single address response
+            connectedWallet = {
+                type: 'magiceden',
+                ordinalsAddress: response.address,
+                paymentAddress: response.address,
+                ordPub: response.publicKey || '',
+                payPub: response.publicKey || '',
+                provider: provider
+            };
+            
+            onWalletConnected();
+        }
+    } catch (error) {
+        console.error('Magic Eden error:', error);
+        showError('Failed to connect Magic Eden');
+    }
+}
         
         async function connectUnisat() {
             if (!window.unisat) {
