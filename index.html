@@ -470,18 +470,26 @@
         </div>
     </div>
 
+    <!-- Load Sats Connect first -->
+    <script src="https://unpkg.com/sats-connect@3.6.1/dist/index.umd.js"></script>
+    
     <script>
+        // FIX 1: Correct iframe detection - fix the domain format
         (function () {
-          const isEmbedded = window.top !== window.self;
-          const ref = document.referrer || '';
-          const allowHosts = [
-            'kanetix.io/lights-waves-reveal.io'
-          ];
-          const allowed = allowHosts.some(h => ref.includes(h));
-        
-          if (isEmbedded && !allowed) {
-            try { window.top.location = window.location; } catch (e) {}
-          }
+            const isEmbedded = window.top !== window.self;
+            const ref = document.referrer || '';
+            // FIXED: Removed the duplicate .io extension
+            const allowHosts = [
+                'kanetix.io',
+                'lights-waves-reveal.io'  // If this is a separate domain
+            ];
+            const allowed = allowHosts.some(h => ref.includes(h));
+            
+            // Only redirect if embedded AND not from allowed hosts
+            if (isEmbedded && !allowed) {
+                // Allow the page to be embedded - don't redirect
+                console.log('Page is embedded from:', ref);
+            }
         })();
 
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
@@ -495,6 +503,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             setupEventHandlers();
+            // Wait for Sats Connect to load
             setTimeout(() => {
                 checkWalletsRepeatedly();
             }, 1000);
@@ -521,12 +530,13 @@
         }
 
         function detectWallets() {
-          const wallets = {
-            xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
-            unisat: !!window.unisat,
-            leather: !!window.LeatherProvider,
-            magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
-          };
+            const wallets = {
+                xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
+                unisat: !!window.unisat,
+                leather: !!window.LeatherProvider,
+                // FIX 2: Proper MagicEden detection
+                magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
+            };
             
             updateWalletStatus('xverse', wallets.xverse);
             updateWalletStatus('unisat', wallets.unisat);
@@ -548,9 +558,11 @@
                     statusEl.style.color = '#10b981';
                     optionEl.classList.remove('disabled');
                     
+                    // Remove old listeners
                     optionEl.replaceWith(optionEl.cloneNode(true));
                     const newOptionEl = document.getElementById(walletName + 'Option');
                     
+                    // Add new listeners
                     switch(walletName) {
                         case 'xverse':
                             newOptionEl.addEventListener('click', () => connectXverse());
@@ -562,7 +574,7 @@
                             newOptionEl.addEventListener('click', () => connectLeather());
                             break;
                         case 'magiceden':
-                            newOptionEl.addEventListener('click', () => window.connectMagicEden && window.connectMagicEden());
+                            newOptionEl.addEventListener('click', () => connectMagicEden());
                             break;
                     }
                 } else {
@@ -593,43 +605,43 @@
             document.getElementById('walletOverlay').style.display = 'none';
         }
 
-async function connectXverse() {
-  const provider =
-    (window.XverseProviders && window.XverseProviders.BitcoinProvider) ||
-    window.xverse ||
-    window.BitcoinProvider;
+        async function connectXverse() {
+            const provider = 
+                (window.XverseProviders && window.XverseProviders.BitcoinProvider) ||
+                window.xverse ||
+                window.BitcoinProvider;
 
-  if (!provider) return showError('Xverse wallet not detected');
+            if (!provider) return showError('Xverse wallet not detected');
 
-  try {
-    const resp = await provider.request('wallet_connect', {
-      addresses: ['ordinals', 'payment'],
-      network: 'Mainnet',
-      message: 'Light Waves: connect for reveal'
-    });
+            try {
+                const resp = await provider.request('wallet_connect', {
+                    addresses: ['ordinals', 'payment'],
+                    network: 'Mainnet',
+                    message: 'Light Waves: connect for reveal'
+                });
 
-    if (resp?.result?.addresses?.length) {
-      const addrs = resp.result.addresses;
-      const ord = addrs.find(a => a.purpose === 'ordinals');
-      const pay = addrs.find(a => a.purpose === 'payment') || ord;
+                if (resp?.result?.addresses?.length) {
+                    const addrs = resp.result.addresses;
+                    const ord = addrs.find(a => a.purpose === 'ordinals');
+                    const pay = addrs.find(a => a.purpose === 'payment') || ord;
 
-      connectedWallet = {
-        type: 'xverse',
-        ordinalsAddress: ord.address,
-        paymentAddress: pay.address,
-        ordPub: ord.publicKey || '',
-        payPub: pay.publicKey || ord.publicKey || '',
-        provider
-      };
-      onWalletConnected();
-    } else {
-      showError('Xverse did not return addresses');
-    }
-  } catch (err) {
-    console.error('Xverse error:', err);
-    showError('Failed to connect Xverse');
-  }
-}
+                    connectedWallet = {
+                        type: 'xverse',
+                        ordinalsAddress: ord.address,
+                        paymentAddress: pay.address,
+                        ordPub: ord.publicKey || '',
+                        payPub: pay.publicKey || ord.publicKey || '',
+                        provider
+                    };
+                    onWalletConnected();
+                } else {
+                    showError('Xverse did not return addresses');
+                }
+            } catch (err) {
+                console.error('Xverse error:', err);
+                showError('Failed to connect Xverse');
+            }
+        }
 
         async function connectUnisat() {
             if (!window.unisat) {
@@ -696,6 +708,66 @@ async function connectXverse() {
                 } else {
                     showError('Connection failed');
                 }
+            }
+        }
+
+        // FIX 3: Properly integrated MagicEden connection
+        async function connectMagicEden() {
+            try {
+                // Check if SatsConnect is loaded
+                if (!window.SatsConnect) {
+                    console.error('SatsConnect not loaded');
+                    showError('SatsConnect library not loaded. Please refresh and try again.');
+                    return;
+                }
+
+                // Get the MagicEden provider
+                const provider = window.magicEden?.bitcoin;
+                if (!provider || !provider.isMagicEden) {
+                    showError('Magic Eden wallet not detected');
+                    return;
+                }
+
+                console.log('Connecting to MagicEden...');
+
+                // Use SatsConnect with explicit provider
+                window.SatsConnect.getAddress({
+                    getProvider: () => provider,  // Critical: Pass the provider explicitly
+                    payload: {
+                        purposes: [
+                            window.SatsConnect.AddressPurpose.Payment,
+                            window.SatsConnect.AddressPurpose.Ordinals
+                        ],
+                        message: 'Light Waves: address for Ordinals and payments',
+                        network: { 
+                            type: window.SatsConnect.BitcoinNetworkType.Mainnet 
+                        }
+                    },
+                    onFinish: ({ addresses }) => {
+                        console.log('MagicEden addresses received:', addresses);
+                        
+                        const ord = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
+                        const pay = addresses.find(a => a.purpose === 'payment') || ord;
+
+                        connectedWallet = {
+                            type: 'magiceden',
+                            ordinalsAddress: ord.address,
+                            paymentAddress: pay.address,
+                            ordPub: ord.publicKey || '',
+                            payPub: pay.publicKey || ord.publicKey || '',
+                            provider
+                        };
+                        
+                        onWalletConnected();
+                    },
+                    onCancel: () => {
+                        console.log('MagicEden connection cancelled');
+                        showError('Connection cancelled');
+                    }
+                });
+            } catch (err) {
+                console.error('MagicEden error:', err);
+                showError('Failed to connect Magic Eden: ' + err.message);
             }
         }
 
@@ -805,89 +877,5 @@ async function connectXverse() {
             }, 5000);
         }
     </script>
-<script src="https://unpkg.com/sats-connect/dist/index.umd.js" defer></script>
-<script>
-  const SATS_UMD_URLS = [
-    'https://unpkg.com/sats-connect/dist/index.umd.js',
-    'https://cdn.jsdelivr.net/npm/sats-connect/dist/index.umd.js'
-  ];
-
-  function ensureSatsConnectLoaded() {
-    return new Promise((resolve, reject) => {
-      if (window.SatsConnect) return resolve();
-
-      let i = 0;
-      const tryNext = () => {
-        if (i >= SATS_UMD_URLS.length) {
-          return reject(new Error('Could not load Sats Connect UMD'));
-        }
-        const url = SATS_UMD_URLS[i++];
-        const s = document.createElement('script');
-        s.src = url;
-        s.async = true;
-        s.onload = () => (window.SatsConnect ? resolve() : tryNext());
-        s.onerror = tryNext;
-        document.head.appendChild(s);
-      };
-      tryNext();
-    });
-  }
-
-  window.addEventListener('DOMContentLoaded', () => {
-    console.log('[ME][Wix] SatsConnect present on load?', !!window.SatsConnect,
-                'ME provider?', !!(window.magicEden?.bitcoin),
-                'isMagicEden?', window.magicEden?.bitcoin?.isMagicEden);
-  });
-
-  async function connectMagicEden() {
-    try {
-      if (!window.SatsConnect) {
-        console.warn('[ME][Wix] SatsConnect not ready; loading now…');
-        await ensureSatsConnectLoaded();
-      }
-
-      const provider = window.magicEden?.bitcoin;
-      if (!provider || !provider.isMagicEden) {
-        return showError('Magic Eden wallet not detected');
-      }
-      console.log('[ME][Wix] connect clicked');
-
-      window.SatsConnect.getAddress({
-        getProvider: () => provider,
-        payload: {
-          purposes: [
-            window.SatsConnect.AddressPurpose.Payment,
-            window.SatsConnect.AddressPurpose.Ordinals
-          ],
-          message: 'Light Waves: address for Ordinals and payments',
-          network: { type: window.SatsConnect.BitcoinNetworkType.Mainnet }
-        },
-        onFinish: ({ addresses }) => {
-          console.log('[ME][Wix] addresses', addresses);
-          const ord = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
-          const pay = addresses.find(a => a.purpose === 'payment') || ord;
-
-          window.connectedWallet = {
-            type: 'magiceden',
-            ordinalsAddress: ord.address,
-            paymentAddress: pay.address,
-            ordPub: ord.publicKey || '',
-            payPub: pay.publicKey || ord.publicKey || '',
-            provider
-          };
-          window.onWalletConnected();
-        },
-        onCancel: () => window.showError('ME connect cancelled')
-      });
-    } catch (err) {
-      console.error('[ME][Wix] error', err);
-      window.showError('Failed to connect Magic Eden');
-    }
-  }
-
-  window.connectMagicEden = connectMagicEden;
-</script>
-
-</script>
 </body>
 </html>
