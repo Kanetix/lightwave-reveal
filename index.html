@@ -543,12 +543,14 @@
         }
 
         function detectWallets() {
-            // Check each wallet with better detection
+            // Check each wallet with correct detection methods
             const wallets = {
-                xverse: !!window.BitcoinProvider, // Xverse uses BitcoinProvider
+                // Xverse can be under different names
+                xverse: !!(window.XverseProviders?.BitcoinProvider || window.BitcoinProvider || window.xverse),
                 unisat: !!window.unisat,
                 leather: !!window.LeatherProvider,
-                magiceden: !!(window.magicEden && (window.magicEden.bitcoin || window.magicEden.solana)) // ME might have different structure
+                // Magic Eden requires bitcoin property
+                magiceden: !!(window.magicEden && window.magicEden.bitcoin && window.magicEden.bitcoin.connect)
             };
             
             // Update status for each wallet
@@ -559,7 +561,9 @@
             
             console.log('Detected wallets:', wallets);
             console.log('Window objects:', {
+                XverseProviders: window.XverseProviders,
                 BitcoinProvider: window.BitcoinProvider,
+                xverse: window.xverse,
                 unisat: window.unisat,
                 LeatherProvider: window.LeatherProvider,
                 magicEden: window.magicEden
@@ -627,27 +631,39 @@
         }
 
         async function connectXverse() {
-            // Xverse uses BitcoinProvider
-            if (!window.BitcoinProvider) {
+            // Try different Xverse provider locations
+            const xverseProvider = window.XverseProviders?.BitcoinProvider || 
+                                  window.BitcoinProvider || 
+                                  window.xverse;
+            
+            if (!xverseProvider) {
                 showError('Xverse wallet not detected');
                 return;
             }
             
             try {
-                // First connect
-                await window.BitcoinProvider.connect();
+                // Xverse uses a different API structure
+                let addresses;
                 
-                // Then get addresses
-                const response = await window.BitcoinProvider.request('getAddresses', {
-                    purposes: ['ordinals', 'payment'],
-                    message: 'Connect to Light Waves Reveals'
-                });
+                // Try the new API first
+                if (xverseProvider.request) {
+                    const response = await xverseProvider.request('getAddresses', {
+                        purposes: ['ordinals', 'payment'],
+                        message: 'Connect to Light Waves Reveals'
+                    });
+                    
+                    if (response && response.result) {
+                        addresses = response.result.addresses || response.result;
+                    }
+                } 
+                // Try the older connect method
+                else if (xverseProvider.connect) {
+                    await xverseProvider.connect();
+                    addresses = await xverseProvider.getAddresses();
+                }
                 
-                console.log('Xverse response:', response);
-                
-                if (response && response.result) {
-                    const addresses = response.result.addresses || response.result;
-                    const ordAddress = addresses.find(a => a.purpose === 'ordinals');
+                if (addresses && addresses.length > 0) {
+                    const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
                     const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
                     
                     connectedWallet = {
@@ -656,17 +672,19 @@
                         paymentAddress: payAddress.address,
                         ordPub: ordAddress.publicKey,
                         payPub: payAddress.publicKey,
-                        provider: window.BitcoinProvider
+                        provider: xverseProvider
                     };
                     
                     onWalletConnected();
+                } else {
+                    showError('Could not get addresses from Xverse');
                 }
             } catch (error) {
                 console.error('Xverse error:', error);
                 if (error.message && error.message.includes('User rejected')) {
                     showError('Connection cancelled');
                 } else {
-                    showError('Connection failed');
+                    showError('Connection failed. Make sure Xverse is unlocked.');
                 }
             }
         }
@@ -740,38 +758,42 @@
         }
 
         async function connectMagicEden() {
-            if (!window.magicEden) {
-                showError('Magic Eden wallet not detected');
+            if (!window.magicEden?.bitcoin) {
+                showError('Magic Eden wallet not detected or Bitcoin not enabled');
                 return;
             }
             
             try {
-                console.log('Magic Eden object:', window.magicEden);
+                // Magic Eden uses specific connection flow
+                const provider = window.magicEden.bitcoin;
                 
-                // Magic Eden has a different API structure
-                // They might not have implemented Bitcoin support yet
-                // or it might be under a different property
+                // First connect
+                await provider.connect();
                 
-                // Try different possible APIs
-                if (window.magicEden.connect) {
-                    await window.magicEden.connect();
-                }
+                // Then get accounts using their specific method
+                const accounts = await provider.getAccounts();
                 
-                // Check if they have a request method
-                if (window.magicEden.request) {
-                    const response = await window.magicEden.request({
-                        method: 'getAddresses',
-                        params: []
-                    });
-                    console.log('ME response:', response);
+                if (accounts && accounts.length > 0) {
+                    // Magic Eden returns accounts differently
+                    const ordinalsAccount = accounts.find(acc => acc.purpose === 'ordinals') || accounts[0];
+                    const paymentAccount = accounts.find(acc => acc.purpose === 'payment') || ordinalsAccount;
+                    
+                    connectedWallet = {
+                        type: 'magiceden',
+                        ordinalsAddress: ordinalsAccount.address,
+                        paymentAddress: paymentAccount.address,
+                        ordPub: ordinalsAccount.publicKey,
+                        payPub: paymentAccount.publicKey,
+                        provider: provider
+                    };
+                    
+                    onWalletConnected();
                 } else {
-                    showError('Magic Eden Bitcoin support not available');
-                    return;
+                    showError('No accounts found in Magic Eden wallet');
                 }
-                
             } catch (error) {
                 console.error('Magic Eden error:', error);
-                showError('Magic Eden wallet not properly configured for Bitcoin');
+                showError('Failed to connect Magic Eden. Make sure you have Bitcoin enabled in the wallet.');
             }
         }
 
