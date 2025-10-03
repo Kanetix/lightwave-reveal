@@ -6,6 +6,8 @@
     <title>Light Waves Reveals</title>
     
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
@@ -45,33 +47,29 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
             text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
+            font-family: 'Cinzel', serif;
+            font-size: 16px;
+            font-weight: 400;
             transition: all 0.3s;
             border: none;
             cursor: pointer;
+            background: none;
+            padding: 10px 0;
         }
         
         .back-button:hover {
+            opacity: 0.8;
             transform: translateX(-3px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-        
-        .back-button svg {
-            width: 20px;
-            height: 20px;
         }
         
         .brand-name {
-            font-size: 20px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-family: 'Cinzel', serif;
+            font-size: 30px;
+            font-weight: 400;
+            color: white;
+            letter-spacing: 2px;
         }
         
         .security-badge {
@@ -450,13 +448,10 @@
     <div class="header-bar">
         <div class="header-content">
             <a href="https://kanetix.io" class="back-button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                Back to Kanetix
+                ← BACK TO SITE
             </a>
             
-            <div class="brand-name">Light Waves</div>
+            <div class="brand-name">KANETIX</div>
             
             <div class="security-badge">
                 <svg viewBox="0 0 24 24" fill="currentColor">
