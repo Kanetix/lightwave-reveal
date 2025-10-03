@@ -470,9 +470,6 @@
         </div>
     </div>
 
-    <!-- Load Sats Connect first -->
-    <script src="https://unpkg.com/sats-connect@3.6.1/dist/index.umd.js"></script>
-    
     <script>
         // FIX 1: Correct iframe detection - fix the domain format
         (function () {
@@ -501,12 +498,71 @@
         let unrevealedLightWaves = [];
         let walletCheckInterval = null;
 
-        document.addEventListener('DOMContentLoaded', function() {
+        // Dynamically load SatsConnect with fallback
+        function loadSatsConnect() {
+            return new Promise((resolve, reject) => {
+                // Check if already loaded
+                if (window.SatsConnect) {
+                    console.log('SatsConnect already loaded');
+                    return resolve();
+                }
+
+                const urls = [
+                    'https://unpkg.com/sats-connect@3.6.1/dist/index.umd.js',
+                    'https://unpkg.com/sats-connect/dist/index.umd.js',
+                    'https://cdn.jsdelivr.net/npm/sats-connect@3.6.1/dist/index.umd.js'
+                ];
+
+                let currentIndex = 0;
+
+                function tryNextUrl() {
+                    if (currentIndex >= urls.length) {
+                        return reject(new Error('Failed to load SatsConnect from all CDNs'));
+                    }
+
+                    const script = document.createElement('script');
+                    script.src = urls[currentIndex];
+                    script.async = true;
+                    
+                    script.onload = () => {
+                        // Give it a moment to initialize
+                        setTimeout(() => {
+                            if (window.SatsConnect) {
+                                console.log('SatsConnect loaded successfully from:', urls[currentIndex]);
+                                resolve();
+                            } else {
+                                currentIndex++;
+                                tryNextUrl();
+                            }
+                        }, 100);
+                    };
+
+                    script.onerror = () => {
+                        console.warn('Failed to load from:', urls[currentIndex]);
+                        currentIndex++;
+                        tryNextUrl();
+                    };
+
+                    document.head.appendChild(script);
+                }
+
+                tryNextUrl();
+            });
+        }
+
+        // Initialize after DOM and SatsConnect are ready
+        document.addEventListener('DOMContentLoaded', async function() {
             setupEventHandlers();
-            // Wait for Sats Connect to load
-            setTimeout(() => {
+            
+            try {
+                await loadSatsConnect();
+                console.log('SatsConnect loaded, checking wallets...');
                 checkWalletsRepeatedly();
-            }, 1000);
+            } catch (error) {
+                console.error('Failed to load SatsConnect:', error);
+                // Still check for non-MagicEden wallets
+                checkWalletsRepeatedly();
+            }
         });
 
         function checkWalletsRepeatedly() {
@@ -714,21 +770,27 @@
         // FIX 3: Properly integrated MagicEden connection
         async function connectMagicEden() {
             try {
-                // Check if SatsConnect is loaded
+                // Try to load SatsConnect if not already loaded
                 if (!window.SatsConnect) {
-                    console.error('SatsConnect not loaded');
-                    showError('SatsConnect library not loaded. Please refresh and try again.');
+                    console.log('SatsConnect not loaded, attempting to load...');
+                    await loadSatsConnect();
+                }
+
+                // Check again after loading
+                if (!window.SatsConnect) {
+                    console.error('SatsConnect still not available');
+                    showError('Unable to load wallet connection library. Please refresh and try again.');
                     return;
                 }
 
                 // Get the MagicEden provider
                 const provider = window.magicEden?.bitcoin;
                 if (!provider || !provider.isMagicEden) {
-                    showError('Magic Eden wallet not detected');
+                    showError('Magic Eden wallet not detected. Please install the Magic Eden browser extension.');
                     return;
                 }
 
-                console.log('Connecting to MagicEden...');
+                console.log('Connecting to MagicEden with SatsConnect version:', window.SatsConnect?.version || 'unknown');
 
                 // Use SatsConnect with explicit provider
                 window.SatsConnect.getAddress({
