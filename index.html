@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Light Waves Reveals</title>
     
-    <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline' https://blockstream.info;
-        style-src 'self' 'unsafe-inline';
-        img-src 'self' data: https:;
-        connect-src 'self' https://blockstream.info https://*.blockstream.info https://api.hiro.so;
-        frame-ancestors 'none';
-        form-action 'none';
-    ">
-    
     <style>
         * {
             margin: 0;
@@ -491,14 +480,12 @@
     </div>
 
     <script>
-        // Security: Prevent clickjacking
+        // Security: Prevent clickjacking (keeping this one as it doesn't break wallets)
         if (window.top !== window.self) {
             window.top.location = window.self.location;
         }
 
-        // Security: Freeze important objects
-        Object.freeze(Object.prototype);
-        Object.freeze(Array.prototype);
+        // REMOVED Object.freeze() calls that were breaking wallet extensions
 
         // Configuration
         const BLOCKSTREAM_API = 'https://blockstream.info/api';
@@ -513,8 +500,10 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             setupEventHandlers();
-            // Start checking for wallets
-            checkWalletsRepeatedly();
+            // Wait a bit for wallets to initialize before checking
+            setTimeout(() => {
+                checkWalletsRepeatedly();
+            }, 1000);
         });
 
         function checkWalletsRepeatedly() {
@@ -543,14 +532,12 @@
         }
 
         function detectWallets() {
-            // Check each wallet with correct detection methods
+            // Use simpler detection that was working before
             const wallets = {
-                // Xverse can be under different names
-                xverse: !!(window.XverseProviders?.BitcoinProvider || window.BitcoinProvider || window.xverse),
+                xverse: !!(window.BitcoinProvider || window.xverse),
                 unisat: !!window.unisat,
                 leather: !!window.LeatherProvider,
-                // Magic Eden requires bitcoin property
-                magiceden: !!(window.magicEden && window.magicEden.bitcoin && window.magicEden.bitcoin.connect)
+                magiceden: !!(window.magicEden && window.magicEden.bitcoin)
             };
             
             // Update status for each wallet
@@ -560,14 +547,6 @@
             updateWalletStatus('magiceden', wallets.magiceden);
             
             console.log('Detected wallets:', wallets);
-            console.log('Window objects:', {
-                XverseProviders: window.XverseProviders,
-                BitcoinProvider: window.BitcoinProvider,
-                xverse: window.xverse,
-                unisat: window.unisat,
-                LeatherProvider: window.LeatherProvider,
-                magicEden: window.magicEden
-            });
             
             return wallets;
         }
@@ -631,10 +610,7 @@
         }
 
         async function connectXverse() {
-            // Try different Xverse provider locations
-            const xverseProvider = window.XverseProviders?.BitcoinProvider || 
-                                  window.BitcoinProvider || 
-                                  window.xverse;
+            const xverseProvider = window.BitcoinProvider || window.xverse;
             
             if (!xverseProvider) {
                 showError('Xverse wallet not detected');
@@ -642,28 +618,14 @@
             }
             
             try {
-                // Xverse uses a different API structure
-                let addresses;
+                const response = await xverseProvider.request('getAddresses', {
+                    purposes: ['ordinals', 'payment'],
+                    message: 'Connect to Light Waves Reveals'
+                });
                 
-                // Try the new API first
-                if (xverseProvider.request) {
-                    const response = await xverseProvider.request('getAddresses', {
-                        purposes: ['ordinals', 'payment'],
-                        message: 'Connect to Light Waves Reveals'
-                    });
-                    
-                    if (response && response.result) {
-                        addresses = response.result.addresses || response.result;
-                    }
-                } 
-                // Try the older connect method
-                else if (xverseProvider.connect) {
-                    await xverseProvider.connect();
-                    addresses = await xverseProvider.getAddresses();
-                }
-                
-                if (addresses && addresses.length > 0) {
-                    const ordAddress = addresses.find(a => a.purpose === 'ordinals') || addresses[0];
+                if (response.status === 'success') {
+                    const addresses = response.result.addresses;
+                    const ordAddress = addresses.find(a => a.purpose === 'ordinals');
                     const payAddress = addresses.find(a => a.purpose === 'payment') || ordAddress;
                     
                     connectedWallet = {
@@ -676,15 +638,13 @@
                     };
                     
                     onWalletConnected();
-                } else {
-                    showError('Could not get addresses from Xverse');
                 }
             } catch (error) {
                 console.error('Xverse error:', error);
                 if (error.message && error.message.includes('User rejected')) {
                     showError('Connection cancelled');
                 } else {
-                    showError('Connection failed. Make sure Xverse is unlocked.');
+                    showError('Failed to connect Xverse');
                 }
             }
         }
@@ -759,41 +719,45 @@
 
         async function connectMagicEden() {
             if (!window.magicEden?.bitcoin) {
-                showError('Magic Eden wallet not detected or Bitcoin not enabled');
+                showError('Magic Eden wallet not detected');
                 return;
             }
             
             try {
-                // Magic Eden uses specific connection flow
                 const provider = window.magicEden.bitcoin;
                 
                 // First connect
                 await provider.connect();
                 
-                // Then get accounts using their specific method
-                const accounts = await provider.getAccounts();
+                // Magic Eden might return addresses differently
+                let addresses;
+                if (provider.getAddresses) {
+                    addresses = await provider.getAddresses();
+                } else if (provider.getAccounts) {
+                    addresses = await provider.getAccounts();
+                }
                 
-                if (accounts && accounts.length > 0) {
-                    // Magic Eden returns accounts differently
-                    const ordinalsAccount = accounts.find(acc => acc.purpose === 'ordinals') || accounts[0];
-                    const paymentAccount = accounts.find(acc => acc.purpose === 'payment') || ordinalsAccount;
+                console.log('Magic Eden response:', addresses);
+                
+                if (addresses && addresses.length > 0) {
+                    // Handle different response formats
+                    const firstAddress = addresses[0];
+                    const ordinalsAddress = firstAddress.address || firstAddress;
                     
                     connectedWallet = {
                         type: 'magiceden',
-                        ordinalsAddress: ordinalsAccount.address,
-                        paymentAddress: paymentAccount.address,
-                        ordPub: ordinalsAccount.publicKey,
-                        payPub: paymentAccount.publicKey,
+                        ordinalsAddress: ordinalsAddress,
+                        paymentAddress: ordinalsAddress,
+                        ordPub: firstAddress.publicKey || '',
+                        payPub: firstAddress.publicKey || '',
                         provider: provider
                     };
                     
                     onWalletConnected();
-                } else {
-                    showError('No accounts found in Magic Eden wallet');
                 }
             } catch (error) {
                 console.error('Magic Eden error:', error);
-                showError('Failed to connect Magic Eden. Make sure you have Bitcoin enabled in the wallet.');
+                showError('Failed to connect Magic Eden');
             }
         }
 
