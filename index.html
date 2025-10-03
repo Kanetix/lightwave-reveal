@@ -533,7 +533,7 @@
 
         function detectWallets() {
           const wallets = {
-            xverse: !!(window.xverse || window.xverseProviders?.BitcoinProvider),
+            xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
             unisat: !!window.unisat,
             leather: !!window.LeatherProvider,
             magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
@@ -610,7 +610,7 @@
 async function connectXverse() {
   // Prefer Xverse's own provider over the generic namespace to avoid collisions
   const provider =
-    (window.xverseProviders && window.xverseProviders.BitcoinProvider) ||
+    (window.XverseProviders && window.XverseProviders.BitcoinProvider) ||
     window.xverse ||
     window.BitcoinProvider;
 
