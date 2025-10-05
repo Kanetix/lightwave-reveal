@@ -91,7 +91,6 @@
             padding: 20px;
         }
         
-        /* Title Section - Adjusted for header */
         .title-section {
             text-align: center;
             padding: 40px 20px 40px;
@@ -357,6 +356,52 @@
             border-radius: 20px;
         }
         
+        /* Fee Level Selection */
+        .fee-level-section {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .fee-level-section h3 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .fee-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .fee-btn {
+            padding: 10px 20px;
+            border: 2px solid #2a2a2a;
+            background: #252525;
+            color: #999;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            max-width: 120px;
+        }
+        
+        .fee-btn.active {
+            border-color: #3b82f6;
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .fee-info {
+            color: #666;
+            font-size: 14px;
+        }
+        
         /* Reveal Section */
         #revealSection {
             background: linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 100%);
@@ -393,9 +438,64 @@
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         
-        #revealBtn:hover {
+        #revealBtn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        #revealBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Payment Modal */
+        #paymentModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1001;
+            backdrop-filter: blur(10px);
+        }
+        
+        #paymentBox {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            z-index: 1002;
+            border: 1px solid #2a2a2a;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        #paymentAddress {
+            background: #0a0a0a;
+            border: 1px solid #3b82f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            color: #3b82f6;
+        }
+        
+        .copy-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
         }
         
         .message-box {
@@ -570,9 +670,38 @@
 
         <div id="revealSection" class="hidden">
             <h2 style="color: white; margin-bottom: 30px;">Step 3: Confirm and Reveal</h2>
+            
+            <!-- Fee Level Selection -->
+            <div class="fee-level-section">
+                <h3>Select Fee Level</h3>
+                <div class="fee-buttons">
+                    <button class="fee-btn" data-level="low">Low</button>
+                    <button class="fee-btn active" data-level="medium">Medium</button>
+                    <button class="fee-btn" data-level="high">High</button>
+                </div>
+                <div class="fee-info" id="feeInfo"></div>
+            </div>
+            
             <div id="selectedCount"></div>
             <div id="totalCost"></div>
             <button id="revealBtn">Reveal Selected Light Waves</button>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="paymentModal">
+            <div id="paymentBox">
+                <button class="close-btn" onclick="closePaymentModal()">×</button>
+                <h2 style="color: white; margin-bottom: 20px;">Complete Payment</h2>
+                <p style="color: #999; margin-bottom: 20px;">Send the exact amount to this address:</p>
+                
+                <div id="paymentAmount" style="font-size: 24px; color: #3b82f6; margin-bottom: 20px;"></div>
+                <div id="paymentAddress"></div>
+                <button class="copy-btn" onclick="copyAddress()">Copy Address</button>
+                
+                <p style="color: #666; margin-top: 20px; font-size: 14px;">
+                    Order ID: <span id="orderId"></span>
+                </p>
+            </div>
         </div>
 
         <div id="errorBox" class="message-box hidden">
@@ -581,51 +710,26 @@
     </div>
 
     <script>
-        // Redirect to full page when embedded in iframe
-        // Add ?edit=true to the URL to disable redirect for editing in Wix
-        (function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            const editMode = urlParams.get('edit') === 'true';
-            const isEmbedded = window.top !== window.self;
-            
-            if (isEmbedded && !editMode) {
-                console.log('Page is embedded in iframe, redirecting to full page...');
-                // Redirect to the full GitHub Pages URL
-                window.top.location.href = window.location.href;
-            } else if (editMode) {
-                console.log('Edit mode enabled - redirect disabled');
-            }
-        })();
-
-        // Simple JWT-like token creator (simplified version of jsontokens)
-        // This may be needed for other MagicEden operations like signing
-        function createUnsecuredToken(payload) {
-            const header = { typ: 'JWT', alg: 'none' };
-            const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '');
-            const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '');
-            return `${encodedHeader}.${encodedPayload}.`;
-        }
-
-        const BLOCKSTREAM_API = 'https://blockstream.info/api';
-        const PARENT_ID = '7089979d8b72cff7953aa29f210b11dce22d950ff6961d4319e28d45331856dci0';
-        const MIN_PADDING_SATS = 330;
+        // CORRECTED: Use the Railway production URL
+        const API_BASE_URL = 'https://YOUR-APP-NAME.up.railway.app';
 
         var connectedWallet = null;
         let selectedLightWaves = new Set();
         let unrevealedLightWaves = [];
         let walletCheckInterval = null;
+        let selectedFeeLevel = 'medium';
+        let currentFeeRates = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             setupEventHandlers();
-            // Start checking for wallets after a short delay
             setTimeout(() => {
                 checkWalletsRepeatedly();
+                fetchFeeRates();
             }, 500);
         });
 
         function checkWalletsRepeatedly() {
             detectWallets();
-            
             walletCheckInterval = setInterval(() => {
                 detectWallets();
             }, 2000);
@@ -641,20 +745,43 @@
             });
             
             document.getElementById('revealBtn').addEventListener('click', revealSelected);
+            
+            // Fee level buttons
+            document.querySelectorAll('.fee-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.fee-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedFeeLevel = this.dataset.level;
+                    updateFeeEstimate();
+                });
+            });
+        }
+
+        async function fetchFeeRates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/fee-rates`);
+                if (!response.ok) throw new Error('Failed to fetch fee rates');
+                
+                currentFeeRates = await response.json();
+                updateFeeInfo();
+            } catch (error) {
+                console.error('Error fetching fee rates:', error);
+                // No fallback - let it fail
+            }
+        }
+
+        function updateFeeInfo() {
+            if (!currentFeeRates) return;
+            
+            const feeInfo = document.getElementById('feeInfo');
+            feeInfo.innerHTML = `
+                Low: ${currentFeeRates.low} sat/vB | 
+                Medium: ${currentFeeRates.medium} sat/vB | 
+                High: ${currentFeeRates.high} sat/vB
+            `;
         }
 
         function detectWallets() {
-            // Add debugging for iframe context
-            console.log('Detecting wallets in iframe context...');
-            console.log('Is in iframe:', window.top !== window.self);
-            console.log('Window objects available:', {
-                XverseProviders: !!window.XverseProviders,
-                BitcoinProvider: !!window.BitcoinProvider,
-                unisat: !!window.unisat,
-                LeatherProvider: !!window.LeatherProvider,
-                magicEden: !!window.magicEden
-            });
-            
             const wallets = {
                 xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
                 unisat: !!window.unisat,
@@ -662,27 +789,10 @@
                 magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
             };
             
-            // Try to access parent window wallets if in iframe (this might not work due to CORS)
-            if (window.top !== window.self) {
-                try {
-                    // This will likely fail due to cross-origin restrictions, but worth trying
-                    if (window.parent && window.parent !== window) {
-                        console.log('Attempting to check parent window for wallets...');
-                        wallets.xverse = wallets.xverse || !!(window.parent.XverseProviders?.BitcoinProvider || window.parent.BitcoinProvider);
-                        wallets.unisat = wallets.unisat || !!window.parent.unisat;
-                        wallets.magiceden = wallets.magiceden || !!(window.parent.magicEden?.bitcoin);
-                    }
-                } catch (e) {
-                    console.log('Cannot access parent window wallets (expected):', e.message);
-                }
-            }
-            
             updateWalletStatus('xverse', wallets.xverse);
             updateWalletStatus('unisat', wallets.unisat);
             updateWalletStatus('leather', wallets.leather);
             updateWalletStatus('magiceden', wallets.magiceden);
-            
-            console.log('Detected wallets:', wallets);
             
             return wallets;
         }
@@ -692,24 +802,19 @@
             const optionEl = document.getElementById(walletName + 'Option');
             
             if (statusEl && optionEl) {
-                // Check if status actually changed
                 const currentStatus = statusEl.textContent;
                 const newStatus = isDetected ? 'Ready' : 'Not installed';
                 
-                // Only update if status changed
                 if (currentStatus !== newStatus) {
                     if (isDetected) {
                         statusEl.textContent = 'Ready';
                         statusEl.style.color = '#10b981';
                         optionEl.classList.remove('disabled');
                         
-                        // Only re-attach listeners if wallet just became available
                         if (currentStatus !== 'Ready') {
-                            // Remove old listeners by cloning
                             optionEl.replaceWith(optionEl.cloneNode(true));
                             const newOptionEl = document.getElementById(walletName + 'Option');
                             
-                            // Add new listeners
                             switch(walletName) {
                                 case 'xverse':
                                     newOptionEl.addEventListener('click', () => connectXverse());
@@ -736,7 +841,6 @@
 
         function showWalletSelection() {
             const wallets = detectWallets();
-            
             const hasAnyWallet = Object.values(wallets).some(v => v);
             
             if (!hasAnyWallet) {
@@ -784,11 +888,11 @@
                     };
                     onWalletConnected();
                 } else {
-                    showError('Xverse did not return addresses');
+                    throw new Error('Xverse did not return addresses');
                 }
             } catch (err) {
                 console.error('Xverse error:', err);
-                showError('Failed to connect Xverse');
+                showError('Failed to connect Xverse: ' + err.message);
             }
         }
 
@@ -813,11 +917,7 @@
                 
                 onWalletConnected();
             } catch (error) {
-                if (error.message && error.message.includes('User rejected')) {
-                    showError('Connection cancelled');
-                } else {
-                    showError('Connection failed');
-                }
+                showError('Connection failed: ' + error.message);
             }
         }
 
@@ -850,130 +950,42 @@
                     };
                     
                     onWalletConnected();
+                } else {
+                    throw new Error('Failed to get addresses');
                 }
             } catch (error) {
-                if (error.message && error.message.includes('User rejected')) {
-                    showError('Connection cancelled');
-                } else {
-                    showError('Connection failed');
-                }
+                showError('Connection failed: ' + error.message);
             }
         }
 
-        // MagicEden connection using createUnsecuredToken
         async function connectMagicEden() {
             try {
                 const provider = window.magicEden?.bitcoin;
                 if (!provider || !provider.isMagicEden) {
-                    showError('Magic Eden wallet not detected. Please install the Magic Eden browser extension.');
+                    showError('Magic Eden wallet not detected');
                     return;
                 }
 
-                console.log('Connecting to MagicEden...');
-
-                // Create the payload for connection
-                const payload = {
-                    purposes: ['payment', 'ordinals'],
-                    message: 'Light Waves: connect for reveal'
-                };
+                const response = await provider.connect();
                 
-                // Create unsigned token as per MagicEden docs
-                const request = createUnsecuredToken(payload);
-                
-                console.log('Sending connect request to MagicEden provider...');
-                
-                try {
-                    // This triggers the popup, but might handle response differently
-                    const response = await provider.connect(request);
+                if (response && response.address) {
+                    connectedWallet = {
+                        type: 'magiceden',
+                        ordinalsAddress: response.address,
+                        paymentAddress: response.address,
+                        ordPub: response.publicKey || '',
+                        payPub: response.publicKey || '',
+                        provider: window.magicEden.bitcoin
+                    };
                     
-                    console.log('MagicEden response:', response);
-                    
-                    // MagicEden might return addresses in different formats
-                    if (response) {
-                        if (response.addresses) {
-                            handleMagicEdenResponse(response.addresses);
-                        } else if (Array.isArray(response)) {
-                            handleMagicEdenResponse(response);
-                        } else if (response.address) {
-                            // Single address response
-                            handleMagicEdenResponse([response]);
-                        } else {
-                            // Try to get addresses another way after successful connect
-                            console.log('Connected but no addresses in response, trying to get accounts...');
-                            // MagicEden might expose addresses differently after connection
-                            if (provider.accounts || provider.selectedAddress) {
-                                const addresses = [{
-                                    address: provider.selectedAddress || provider.accounts[0],
-                                    purpose: 'ordinals'
-                                }];
-                                handleMagicEdenResponse(addresses);
-                            } else {
-                                console.error('Unexpected response format:', response);
-                                showError('Connected but could not retrieve addresses');
-                            }
-                        }
-                    }
-                } catch (error) {
-                    // Check if it's a user rejection
-                    if (error.message && error.message.includes('rejected')) {
-                        showError('Connection cancelled by user');
-                    } else {
-                        // Log the error but don't assume failure - check if we're actually connected
-                        console.log('Connection method threw error but checking connection status:', error);
-                        
-                        // Sometimes providers throw errors but still connect
-                        // Check if we can access addresses despite the error
-                        if (provider.accounts && provider.accounts.length > 0) {
-                            console.log('Despite error, found accounts:', provider.accounts);
-                            const addresses = provider.accounts.map(acc => ({
-                                address: typeof acc === 'string' ? acc : acc.address,
-                                purpose: 'ordinals'
-                            }));
-                            handleMagicEdenResponse(addresses);
-                        } else if (provider.selectedAddress) {
-                            console.log('Despite error, found selectedAddress:', provider.selectedAddress);
-                            handleMagicEdenResponse([{
-                                address: provider.selectedAddress,
-                                purpose: 'ordinals'
-                            }]);
-                        } else {
-                            console.error('MagicEden connection error:', error);
-                            showError('Failed to connect Magic Eden wallet');
-                        }
-                    }
+                    onWalletConnected();
+                } else {
+                    throw new Error('No address returned');
                 }
-                
             } catch (err) {
                 console.error('MagicEden error:', err);
                 showError('Failed to connect Magic Eden: ' + err.message);
             }
-        }
-
-        function handleMagicEdenResponse(addresses) {
-            console.log('MagicEden addresses received:', addresses);
-            
-            const ord = addresses.find(a => 
-                a.purpose === 'ordinals' || 
-                a.type === 'p2tr' || 
-                (a.address && a.address.startsWith('bc1p'))
-            ) || addresses[0];
-            
-            const pay = addresses.find(a => 
-                a.purpose === 'payment' || 
-                a.type === 'p2wpkh' || 
-                (a.address && a.address.startsWith('bc1q'))
-            ) || ord;
-
-            connectedWallet = {
-                type: 'magiceden',
-                ordinalsAddress: ord.address,
-                paymentAddress: pay.address,
-                ordPub: ord.publicKey || '',
-                payPub: pay.publicKey || ord.publicKey || '',
-                provider: window.magicEden.bitcoin
-            };
-            
-            onWalletConnected();
         }
 
         function onWalletConnected() {
@@ -996,30 +1008,44 @@
             document.getElementById('lightwavesSection').classList.add('hidden');
             
             try {
-                const response = await fetch(`${BLOCKSTREAM_API}/address/${connectedWallet.ordinalsAddress}/utxo`);
-                const utxos = await response.json();
+                const response = await fetch(`${API_BASE_URL}/api/check-wallet`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: connectedWallet.ordinalsAddress,
+                        startIndex: 0,
+                        endIndex: 100
+                    })
+                });
                 
-                // For demo purposes, show mock data
-                // In production, you'd check each UTXO for Light Wave inscriptions
-                unrevealedLightWaves = [
-                    { id: '1', number: '#1234', status: 'UNREVEALED' },
-                    { id: '2', number: '#5678', status: 'UNREVEALED' },
-                    { id: '3', number: '#9012', status: 'UNREVEALED' }
-                ];
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.details || error.error || 'Failed to load Light Waves');
+                }
                 
-                document.getElementById('loadingBox').classList.add('hidden');
+                const data = await response.json();
                 
-                if (unrevealedLightWaves.length === 0) {
-                    document.getElementById('emptyMessage').classList.remove('hidden');
-                    document.getElementById('lightwavesSection').classList.remove('hidden');
+                if (data.status === 'success') {
+                    unrevealedLightWaves = data.unrevealed || [];
+                    
+                    document.getElementById('loadingBox').classList.add('hidden');
+                    
+                    if (unrevealedLightWaves.length === 0) {
+                        document.getElementById('emptyMessage').classList.remove('hidden');
+                        document.getElementById('lightwavesSection').classList.remove('hidden');
+                    } else {
+                        displayLightWaves(unrevealedLightWaves);
+                        document.getElementById('lightwavesSection').classList.remove('hidden');
+                    }
                 } else {
-                    displayLightWaves(unrevealedLightWaves);
-                    document.getElementById('lightwavesSection').classList.remove('hidden');
+                    throw new Error(data.error || 'Failed to load Light Waves');
                 }
                 
             } catch (error) {
                 document.getElementById('loadingBox').classList.add('hidden');
-                showError('Failed to load Light Waves');
+                showError('Failed to load Light Waves: ' + error.message);
             }
         }
 
@@ -1032,8 +1058,8 @@
                 item.className = 'lightwave-item';
                 item.innerHTML = `
                     <input type="checkbox" id="lw-check-${index}" data-id="${lw.id}">
-                    <span class="lw-number">${lw.number}</span>
-                    <span class="lw-status">${lw.status}</span>
+                    <span class="lw-number">#${lw.number}</span>
+                    <span class="lw-status">${lw.revealed ? 'REVEALED' : 'UNREVEALED'}</span>
                 `;
                 
                 const checkbox = item.querySelector('input');
@@ -1061,17 +1087,91 @@
             }
         }
 
-        function updateFeeEstimate() {
+        async function updateFeeEstimate() {
             const count = selectedLightWaves.size;
-            const baseCost = count * MIN_PADDING_SATS;
-            const networkFee = Math.ceil(count * 200 * 20);
-            const totalCost = baseCost + networkFee;
             
-            document.getElementById('totalCost').textContent = `Total Cost: ${totalCost.toLocaleString()} sats (~$${(totalCost * 0.0003).toFixed(2)} USD)`;
+            if (!currentFeeRates) {
+                await fetchFeeRates();
+            }
+            
+            if (!currentFeeRates) {
+                document.getElementById('totalCost').textContent = 'Unable to calculate fees';
+                return;
+            }
+            
+            const feeRate = currentFeeRates[selectedFeeLevel];
+            const estimatedVBytes = count * 175;
+            const networkFee = Math.ceil(estimatedVBytes * feeRate);
+            const serviceFee = count * 546;
+            const totalCost = networkFee + serviceFee;
+            
+            const btcValue = (totalCost / 100000000).toFixed(8);
+            
+            document.getElementById('totalCost').innerHTML = `
+                Estimated Total: ${totalCost.toLocaleString()} sats<br>
+                <span style="font-size: 16px; color: #999;">(~${btcValue} BTC)</span>
+            `;
         }
 
-        function revealSelected() {
-            showError('Reveal functionality coming soon!');
+        async function revealSelected() {
+            if (selectedLightWaves.size === 0) return;
+            
+            const revealBtn = document.getElementById('revealBtn');
+            revealBtn.disabled = true;
+            revealBtn.textContent = 'Creating reveal order...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/create-reveal`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        lightWaveIds: Array.from(selectedLightWaves),
+                        receiveAddress: connectedWallet.ordinalsAddress,
+                        feeLevel: selectedFeeLevel
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.details || error.error || 'Failed to create order');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showPaymentModal(data);
+                } else {
+                    throw new Error(data.error || 'Failed to create reveal order');
+                }
+                
+            } catch (error) {
+                showError('Failed to create reveal order: ' + error.message);
+            } finally {
+                revealBtn.disabled = false;
+                revealBtn.textContent = 'Reveal Selected Light Waves';
+            }
+        }
+
+        function showPaymentModal(orderData) {
+            document.getElementById('paymentAmount').textContent = `${orderData.totalAmount} sats`;
+            document.getElementById('paymentAddress').textContent = orderData.paymentAddress;
+            document.getElementById('orderId').textContent = orderData.orderId;
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+            selectedLightWaves.clear();
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            updateRevealUI();
+        }
+
+        function copyAddress() {
+            const address = document.getElementById('paymentAddress').textContent;
+            navigator.clipboard.writeText(address);
+            showError('Address copied to clipboard!');
         }
 
         function showError(message) {
