@@ -231,11 +231,21 @@
         .wallet-icon {
             width: 32px;
             height: 32px;
-            background: #3b82f6;
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+        }
+        
+        .wallet-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .wallet-icon.fallback {
+            background: #3b82f6;
             font-weight: bold;
             color: white;
         }
@@ -484,7 +494,11 @@
                 </div>
                 
                 <div id="xverseOption" class="wallet-option">
-                    <div class="wallet-icon">X</div>
+                    <div class="wallet-icon">
+                        <img src="https://www.xverse.app/Xverse_Mark_Large.svg" 
+                             alt="Xverse" 
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='X'; this.parentElement.classList.add('fallback');">
+                    </div>
                     <div>
                         <div class="wallet-name">Xverse</div>
                         <div class="wallet-status" id="xverseStatus">Checking...</div>
@@ -492,7 +506,11 @@
                 </div>
                 
                 <div id="unisatOption" class="wallet-option">
-                    <div class="wallet-icon">U</div>
+                    <div class="wallet-icon">
+                        <img src="https://raw.githubusercontent.com/unisat-wallet/unisat-web3-demo/main/public/logo.png" 
+                             alt="Unisat" 
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='U'; this.parentElement.classList.add('fallback');">
+                    </div>
                     <div>
                         <div class="wallet-name">Unisat</div>
                         <div class="wallet-status" id="unisatStatus">Checking...</div>
@@ -500,7 +518,11 @@
                 </div>
                 
                 <div id="leatherOption" class="wallet-option">
-                    <div class="wallet-icon">L</div>
+                    <div class="wallet-icon">
+                        <img src="https://avatars.githubusercontent.com/u/77637537?s=200&v=4" 
+                             alt="Leather" 
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='L'; this.parentElement.classList.add('fallback');">
+                    </div>
                     <div>
                         <div class="wallet-name">Leather (Hiro)</div>
                         <div class="wallet-status" id="leatherStatus">Checking...</div>
@@ -508,7 +530,12 @@
                 </div>
                 
                 <div id="magicedenOption" class="wallet-option">
-                    <div class="wallet-icon">M</div>
+                    <div class="wallet-icon">
+                        <img src="https://pbs.twimg.com/profile_images/1661456506038894593/YT6Ia231_400x400.jpg" 
+                             alt="Magic Eden" 
+                             style="border-radius: 8px;"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='M'; this.parentElement.classList.add('fallback');">
+                    </div>
                     <div>
                         <div class="wallet-name">Magic Eden</div>
                         <div class="wallet-status" id="magicedenStatus">Checking...</div>
@@ -556,13 +583,18 @@
 
     <script>
         // Redirect to full page when embedded in iframe
+        // Add ?edit=true to the URL to disable redirect for editing in Wix
         (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const editMode = urlParams.get('edit') === 'true';
             const isEmbedded = window.top !== window.self;
             
-            if (isEmbedded) {
+            if (isEmbedded && !editMode) {
                 console.log('Page is embedded in iframe, redirecting to full page...');
                 // Redirect to the full GitHub Pages URL
                 window.top.location.href = window.location.href;
+            } else if (editMode) {
+                console.log('Edit mode enabled - redirect disabled');
             }
         })();
 
