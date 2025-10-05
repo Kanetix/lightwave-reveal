@@ -365,4 +365,3 @@ app.listen(PORT, () => {
     process.exit(1); // Exit if no API key
   }
 });
-Claude
