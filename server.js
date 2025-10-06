@@ -147,6 +147,10 @@ app.get('/', (_req, res) => {
  *  4) For each unique sat: `/sats/{sat}/inscriptions?limit=1` → read `total`
  *  5) UNREVEALED if `total === 1`
  */
+/**
+ * POST /api/check-wallet
+ * body: { address: string }
+ */
 app.post('/api/check-wallet', async (req, res) => {
   try {
     const { address } = req.body || {};
@@ -165,6 +169,22 @@ app.post('/api/check-wallet', async (req, res) => {
       offset += perPage;
       if (owned.length >= (page?.total || 0)) break;
     }
+
+    // 🔍 CRITICAL DEBUG: Check if any IDs contain your base txid
+    console.log(`\n=== CHECKING ${owned.length} INSCRIPTIONS ===`);
+    const containsBase = owned.filter(ins => 
+      ins.id && ins.id.includes('dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4e')
+    );
+    console.log(`Found ${containsBase.length} inscriptions containing base txid`);
+    
+    if (containsBase.length > 0) {
+      console.log('First 5 matching IDs:');
+      containsBase.slice(0, 5).forEach(ins => console.log(`  ${ins.id}`));
+    } else {
+      console.log('First 10 IDs in wallet:');
+      owned.slice(0, 10).forEach(ins => console.log(`  ${ins.id}`));
+    }
+    console.log('=====================================\n');
 
     // 2) filter to our collection by ID pattern
     const mine = owned.filter(r => r?.id && isOurInscriptionId(r.id));
@@ -201,7 +221,7 @@ app.post('/api/check-wallet', async (req, res) => {
         revealed: false,
         satOrdinal: String(c.sat_ordinal),
         label: `Sat ${String(c.sat_ordinal)}`,
-        index: getIndexFromId(c.id) // optional, not used by your UI but handy
+        index: getIndexFromId(c.id)
       }));
 
     return res.json({
@@ -211,7 +231,6 @@ app.post('/api/check-wallet', async (req, res) => {
     });
   } catch (err) {
     console.error('Hiro check failure:', err?.response?.status, err?.response?.data || err?.message);
-    // Work-or-fail (no HTML scraping fallback)
     return res.status(502).json({ status: 'error', error: 'Hiro API failed', details: err?.message || String(err) });
   }
 });
@@ -293,4 +312,5 @@ app.listen(PORT, () => {
   console.log('Hiro key configured:', !!HIRO_API_KEY);
   console.log('Collection base:', LIGHTWAVE_BASE_ID, ' max index:', LW_MAX_INDEX);
 });
+
 
