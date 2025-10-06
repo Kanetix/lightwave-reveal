@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
    ========================= */
 // Base inscription txid (NO trailing 'i')
 const LIGHTWAVE_BASE_ID = process.env.LIGHTWAVE_BASE_ID
-  || 'dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4e';
+  || 'dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4ei';
 
 // Max index in your collection (0..LW_MAX_INDEX inclusive)
 const LW_MAX_INDEX = Number(process.env.LW_MAX_INDEX ?? 3332);
@@ -312,5 +312,6 @@ app.listen(PORT, () => {
   console.log('Hiro key configured:', !!HIRO_API_KEY);
   console.log('Collection base:', LIGHTWAVE_BASE_ID, ' max index:', LW_MAX_INDEX);
 });
+
 
 
