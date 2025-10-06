@@ -153,7 +153,7 @@ app.post('/api/check-wallet', async (req, res) => {
     if (!address) return res.status(400).json({ status: 'error', error: 'Wallet address required' });
 
     // 1) list wallet inscriptions
-    const perPage = 200;
+    const perPage = 60;
     let offset = 0;
     const owned = [];
     while (true) {
@@ -293,3 +293,4 @@ app.listen(PORT, () => {
   console.log('Hiro key configured:', !!HIRO_API_KEY);
   console.log('Collection base:', LIGHTWAVE_BASE_ID, ' max index:', LW_MAX_INDEX);
 });
+
