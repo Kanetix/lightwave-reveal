@@ -8,37 +8,44 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 /* =========================
-   REQUIRED ENV (work-or-fail)
+   Collection config (IDs)
    ========================= */
-if (!process.env.LW_START_SAT || !process.env.LW_SUPPLY) {
-  console.error('CRITICAL: LW_START_SAT and LW_SUPPLY must be set!');
-  process.exit(1);
-}
-const LW_START_SAT = BigInt(process.env.LW_START_SAT);
-const LW_SUPPLY    = BigInt(process.env.LW_SUPPLY);
-const LW_END_SAT   = LW_START_SAT + LW_SUPPLY - 1n;
+// Base inscription txid (NO trailing 'i')
+const LIGHTWAVE_BASE_ID = process.env.LIGHTWAVE_BASE_ID
+  || 'dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4e';
 
-if (!process.env.ORDINAL_BOT_API_KEY) {
+// Max index in your collection (0..LW_MAX_INDEX inclusive)
+const LW_MAX_INDEX = Number(process.env.LW_MAX_INDEX ?? 3332);
+
+/* =========================
+   Required external keys
+   ========================= */
+const ORDINAL_BOT_API_KEY = process.env.ORDINAL_BOT_API_KEY;
+if (!ORDINAL_BOT_API_KEY) {
   console.error('CRITICAL: ORDINAL_BOT_API_KEY not set!');
   process.exit(1);
 }
-const ORDINAL_BOT_API_KEY = process.env.ORDINAL_BOT_API_KEY;
 
 /* =========================
    CORS / Middleware
    ========================= */
-app.use(cors({
+const corsOptions = {
   origin: [
     'https://kanetix.github.io',
     'https://kanetix.io',
     'https://www.kanetix.io'
   ],
-  credentials: true
-}));
+  methods: ['GET','HEAD','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  credentials: true,
+  optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 /* =========================
-   External API clients
+   API clients
    ========================= */
 const OB = axios.create({
   baseURL: 'https://api.ordinalsbot.com',
@@ -52,13 +59,32 @@ const Hiro = axios.create({
 });
 
 /* =========================
-   Helpers (Hiro-based)
+   Utilities
    ========================= */
-function inRange(satBig) {
-  return satBig >= LW_START_SAT && satBig <= LW_END_SAT;
+const feeCache = new NodeCache({ stdTTL: 30 }); // 30s mempool cache
+
+async function getCurrentFeeRates() {
+  const cached = feeCache.get('feeRates');
+  if (cached) return cached;
+
+  const { data } = await axios.get('https://mempool.space/api/v1/fees/recommended');
+  if (
+    typeof data.economyFee !== 'number' ||
+    typeof data.hourFee !== 'number' ||
+    typeof data.fastestFee !== 'number'
+  ) throw new Error('Invalid fee data from mempool.space');
+
+  const feeRates = {
+    low: data.economyFee,
+    medium: data.hourFee,
+    high: data.fastestFee,
+    timestamp: Date.now()
+  };
+  feeCache.set('feeRates', feeRates);
+  return feeRates;
 }
 
-// modest concurrency pool
+// Concurrency helper
 async function mapPool(items, limit, fn) {
   const out = new Array(items.length);
   let i = 0;
@@ -73,31 +99,19 @@ async function mapPool(items, limit, fn) {
   return out;
 }
 
-/* =========================
-   Fees via mempool.space
-   ========================= */
-const feeCache = new NodeCache({ stdTTL: 30 }); // 30s
-async function getCurrentFeeRates() {
-  const cached = feeCache.get('feeRates');
-  if (cached) return cached;
+// Does an inscription ID belong to our collection? (base txid + 'i<index>')
+function isOurInscriptionId(id) {
+  const m = /^([a-f0-9]{64})i(\d+)$/.exec(id);
+  if (!m) return false;
+  if (m[1] !== LIGHTWAVE_BASE_ID) return false;
+  const idx = Number(m[2]);
+  return Number.isInteger(idx) && idx >= 0 && idx <= LW_MAX_INDEX;
+}
 
-  const { data } = await axios.get('https://mempool.space/api/v1/fees/recommended');
-  if (
-    typeof data.economyFee !== 'number' ||
-    typeof data.hourFee !== 'number' ||
-    typeof data.fastestFee !== 'number'
-  ) {
-    throw new Error('Invalid fee data from mempool.space');
-  }
-
-  const feeRates = {
-    low: data.economyFee,
-    medium: data.hourFee,
-    high: data.fastestFee,
-    timestamp: Date.now()
-  };
-  feeCache.set('feeRates', feeRates);
-  return feeRates;
+// Optional: extract index for debugging/telemetry
+function getIndexFromId(id) {
+  const m = /^([a-f0-9]{64})i(\d+)$/.exec(id);
+  return m ? Number(m[2]) : null;
 }
 
 /* =========================
@@ -105,18 +119,16 @@ async function getCurrentFeeRates() {
    ========================= */
 
 // Health
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.json({
     status: 'Light Waves Reveal API is running',
-    version: '3.0.0',
-    env: {
-      LW_START_SAT: process.env.LW_START_SAT,
-      LW_SUPPLY: process.env.LW_SUPPLY,
-      HIRO_API: true,
-      OB_API: true
+    version: '3.1.0',
+    collection: {
+      baseId: LIGHTWAVE_BASE_ID,
+      maxIndex: LW_MAX_INDEX
     },
     endpoints: {
-      'POST /api/check-wallet': 'Classify wallet holdings using Hiro (unrevealed vs revealed)',
+      'POST /api/check-wallet': 'Classify wallet holdings (Hiro) using inscription ID pattern',
       'GET /api/fee-rates': 'Get current fee rates (mempool.space)',
       'POST /api/create-reveal': 'Create reinscription order (OrdinalsBot)',
       'GET /api/order-status/:orderId': 'Check order status (OrdinalsBot)'
@@ -127,26 +139,20 @@ app.get('/', (req, res) => {
 /**
  * POST /api/check-wallet
  * body: { address: string }
- * returns:
- * {
- *   status: 'success',
- *   unrevealed: [{ id, satOrdinal, revealed:false, label }],
- *   totals: { owned, inRange, unrevealed }
- * }
  *
- * Stateless logic (Hiro):
- *  1) list wallet inscriptions (paged)
- *  2) ensure sat_ordinal for each
- *  3) filter to [LW_START_SAT, LW_END_SAT]
- *  4) per unique sat -> /sats/{sat}/inscriptions?limit=1 to get total
- *  5) unrevealed if total === 1
+ * Steps:
+ *  1) List wallet inscriptions via Hiro (paged)
+ *  2) Keep only IDs matching `${LIGHTWAVE_BASE_ID}i<0..LW_MAX_INDEX>`
+ *  3) Ensure sat_ordinal for each (from list or `/inscriptions/{id}`)
+ *  4) For each unique sat: `/sats/{sat}/inscriptions?limit=1` → read `total`
+ *  5) UNREVEALED if `total === 1`
  */
 app.post('/api/check-wallet', async (req, res) => {
   try {
     const { address } = req.body || {};
     if (!address) return res.status(400).json({ status: 'error', error: 'Wallet address required' });
 
-    // 1) list wallet inscriptions (paged)
+    // 1) list wallet inscriptions
     const perPage = 200;
     let offset = 0;
     const owned = [];
@@ -160,53 +166,52 @@ app.post('/api/check-wallet', async (req, res) => {
       if (owned.length >= (page?.total || 0)) break;
     }
 
-    if (owned.length === 0) {
-      return res.json({ status: 'success', unrevealed: [], totals: { owned: 0, inRange: 0, unrevealed: 0 } });
+    // 2) filter to our collection by ID pattern
+    const mine = owned.filter(r => r?.id && isOurInscriptionId(r.id));
+    if (mine.length === 0) {
+      return res.json({
+        status: 'success',
+        unrevealed: [],
+        totals: { owned: owned.length, inRange: 0, unrevealed: 0 }
+      });
     }
 
-    // 2) ensure sat_ordinal for each
-    const withSat = await mapPool(owned, 12, async (ins) => {
+    // 3) ensure sat_ordinal
+    const withSat = await mapPool(mine, 12, async (ins) => {
       if (ins.sat_ordinal !== undefined && ins.sat_ordinal !== null) return ins;
       const { data: full } = await Hiro.get(`/inscriptions/${ins.id}`);
       return { ...ins, sat_ordinal: full.sat_ordinal };
     });
 
-    // 3) filter to collection sat range
-    const candidates = withSat
-      .filter((ins) => ins.sat_ordinal !== undefined && ins.sat_ordinal !== null)
-      .map((ins) => ({ ...ins, satBig: BigInt(ins.sat_ordinal) }))
-      .filter((ins) => inRange(ins.satBig));
+    const withSatClean = withSat.filter(x => x.sat_ordinal !== undefined && x.sat_ordinal !== null);
 
-    if (candidates.length === 0) {
-      return res.json({ status: 'success', unrevealed: [], totals: { owned: owned.length, inRange: 0, unrevealed: 0 } });
-    }
-
-    // 4) per unique sat -> get total inscriptions on that sat
-    const uniqueSatStrs = [...new Set(candidates.map((c) => c.satBig.toString()))];
+    // 4) unique sat → get total inscription count on that sat
+    const uniqueSatStrs = [...new Set(withSatClean.map(c => String(c.sat_ordinal)))].filter(Boolean);
     const satTotals = await mapPool(uniqueSatStrs, 12, async (satStr) => {
       const { data } = await Hiro.get(`/sats/${satStr}/inscriptions`, { params: { limit: 1, offset: 0 } });
       return { satStr, total: data?.total || 0 };
     });
     const totalsBySat = new Map(satTotals.map(x => [x.satStr, x.total]));
 
-    // 5) unrevealed = total === 1
-    const unrevealed = candidates
-      .filter((c) => (totalsBySat.get(c.satBig.toString()) ?? 0) === 1)
-      .map((c) => ({
+    // 5) unrevealed = sat has exactly 1 inscription
+    const unrevealed = withSatClean
+      .filter(c => (totalsBySat.get(String(c.sat_ordinal)) ?? 0) === 1)
+      .map(c => ({
         id: c.id,
         revealed: false,
-        satOrdinal: c.satBig.toString(),
-        label: `Sat ${c.satBig.toString()}`
+        satOrdinal: String(c.sat_ordinal),
+        label: `Sat ${String(c.sat_ordinal)}`,
+        index: getIndexFromId(c.id) // optional, not used by your UI but handy
       }));
 
     return res.json({
       status: 'success',
       unrevealed,
-      totals: { owned: owned.length, inRange: candidates.length, unrevealed: unrevealed.length }
+      totals: { owned: owned.length, inRange: withSatClean.length, unrevealed: unrevealed.length }
     });
   } catch (err) {
     console.error('Hiro check failure:', err?.response?.status, err?.response?.data || err?.message);
-    // Work-or-fail: no fallback to HTML scraping
+    // Work-or-fail (no HTML scraping fallback)
     return res.status(502).json({ status: 'error', error: 'Hiro API failed', details: err?.message || String(err) });
   }
 });
@@ -214,8 +219,7 @@ app.post('/api/check-wallet', async (req, res) => {
 /**
  * POST /api/create-reveal
  * body: { lightWaveIds: string[], receiveAddress: string, feeLevel: 'low'|'medium'|'high' }
- * Notes:
- *  - Keeps your OB flow; you’re reinscribing with a blank text child.
+ * Reinscribes a blank text child on each target inscription (your reveal mechanism).
  */
 app.post('/api/create-reveal', async (req, res) => {
   try {
@@ -231,16 +235,12 @@ app.post('/api/create-reveal', async (req, res) => {
     const feeRate = feeRates[feeLevel];
     if (!feeRate) throw new Error(`Invalid fee level: ${feeLevel}`);
 
-    // Your OB payload as provided
     const orderData = {
       inscriptionIds: lightWaveIds,
       fee: feeRate,
       receiveAddress,
       reinscribe: true,
-      childInscription: {
-        contentType: 'text/plain',
-        content: '' // blank file to reveal
-      }
+      childInscription: { contentType: 'text/plain', content: '' }
     };
 
     const { data } = await OB.post('/reinscribe', orderData);
@@ -263,7 +263,7 @@ app.post('/api/create-reveal', async (req, res) => {
   }
 });
 
-// Fees
+// Fees passthrough
 app.get('/api/fee-rates', async (_req, res) => {
   try {
     const feeRates = await getCurrentFeeRates();
@@ -274,7 +274,7 @@ app.get('/api/fee-rates', async (_req, res) => {
   }
 });
 
-// Order status passthrough
+// OB order status
 app.get('/api/order-status/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -286,13 +286,10 @@ app.get('/api/order-status/:orderId', async (req, res) => {
   }
 });
 
-/* =========================
-   Start
-   ========================= */
 app.listen(PORT, () => {
   console.log(`Light Waves Reveal API running on port ${PORT}`);
   console.log('Environment:', process.env.NODE_ENV || 'development');
-  console.log('OB API key configured:', !!ORDINAL_BOT_API_KEY);
-  console.log('Hiro API key configured:', !!HIRO_API_KEY);
-  console.log('Sat range:', process.env.LW_START_SAT, '→', (LW_END_SAT).toString());
+  console.log('OB key configured:', !!ORDINAL_BOT_API_KEY);
+  console.log('Hiro key configured:', !!HIRO_API_KEY);
+  console.log('Collection base:', LIGHTWAVE_BASE_ID, ' max index:', LW_MAX_INDEX);
 });
