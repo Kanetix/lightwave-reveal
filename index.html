@@ -1,1186 +1,741 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Light Waves Reveals</title>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #0a0a0a;
-            color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        
-        /* Header Bar */
-        .header-bar {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-            border-bottom: 1px solid #3a3a3a;
-            padding: 15px 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            background-color: rgba(26, 26, 26, 0.95);
-        }
-        
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: white;
-            text-decoration: none;
-            font-family: 'Cinzel', serif;
-            font-size: 16px;
-            font-weight: 400;
-            transition: all 0.3s;
-            border: none;
-            cursor: pointer;
-            background: none;
-            padding: 10px 0;
-        }
-        
-        .back-button:hover {
-            opacity: 0.8;
-            transform: translateX(-3px);
-        }
-        
-        .brand-name {
-            font-family: 'Cinzel', serif;
-            font-size: 30px;
-            font-weight: 400;
-            color: white;
-            letter-spacing: 2px;
-        }
-        
-        .security-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #10b981;
-            font-size: 14px;
-        }
-        
-        .security-badge svg {
-            width: 16px;
-            height: 16px;
-        }
-        
-        #mainContainer {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .title-section {
-            text-align: center;
-            padding: 40px 20px 40px;
-        }
-        
-        .main-title {
-            font-size: 64px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-        }
-        
-        /* Wallet Connection Section */
-        .wallet-section {
-            background: #1a1a1a;
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 30px;
-            border: 1px solid #2a2a2a;
-            text-align: center;
-        }
-        
-        .wallet-section h2 {
-            margin-bottom: 20px;
-            color: white;
-            font-size: 24px;
-        }
-        
-        .wallet-section p {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 16px;
-        }
-        
-        #connectWalletBtn {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            border: none;
-            padding: 16px 40px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-        
-        #connectWalletBtn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
-        }
-        
-        #walletAddress {
-            color: #3b82f6;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            margin-top: 20px;
-            padding: 12px 20px;
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 8px;
-            display: inline-block;
-        }
-        
-        /* Wallet Selection Modal */
-        #walletOverlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 999;
-            backdrop-filter: blur(10px);
-        }
-        
-        #walletSelectionBox {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1a1a1a;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            border: 1px solid #2a2a2a;
-            max-width: 400px;
-            width: 90%;
-        }
-        
-        .modal-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .modal-header h3 {
-            color: #ffffff;
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        
-        .modal-header p {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .wallet-option {
-            background: #252525;
-            border: 2px solid transparent;
-            padding: 20px;
-            margin: 12px 0;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            position: relative;
-        }
-        
-        .wallet-option.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .wallet-option:not(.disabled):hover {
-            border-color: #3b82f6;
-            background: #2a2a2a;
-            transform: translateX(5px);
-        }
-        
-        .wallet-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        
-        .wallet-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .wallet-icon.fallback {
-            background: #3b82f6;
-            font-weight: bold;
-            color: white;
-        }
-        
-        .wallet-name {
-            flex: 1;
-            font-weight: 500;
-            color: #e0e0e0;
-        }
-        
-        .wallet-status {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .close-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: #666;
-            font-size: 28px;
-            cursor: pointer;
-            transition: color 0.3s;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-        
-        .close-btn:hover {
-            color: #fff;
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Light Waves Section */
-        #lightwavesSection {
-            margin-top: 40px;
-        }
-        
-        .section-header {
-            background: #1a1a1a;
-            padding: 20px;
-            border-radius: 12px 12px 0 0;
-            border: 1px solid #2a2a2a;
-            border-bottom: none;
-        }
-        
-        .section-header h2 {
-            color: white;
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .section-header p {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .lightwave-list {
-            background: #141414;
-            border: 1px solid #2a2a2a;
-            border-top: none;
-            border-radius: 0 0 12px 12px;
-            padding: 20px;
-        }
-        
-        .lightwave-item {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            padding: 20px;
-            margin: 12px 0;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            transition: all 0.3s;
-        }
-        
-        .lightwave-item:hover {
-            border-color: #3b82f6;
-            background: #1e1e1e;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-        }
-        
-        .lightwave-item input[type="checkbox"] {
-            width: 24px;
-            height: 24px;
-            accent-color: #3b82f6;
-            cursor: pointer;
-        }
-        
-        .lw-number {
-            color: white;
-            font-weight: 700;
-            font-size: 18px;
-        }
-        
-        .lw-status {
-            color: #666;
-            font-size: 14px;
-            margin-left: auto;
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-        }
-        
-        /* Fee Level Selection */
-        .fee-level-section {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        
-        .fee-level-section h3 {
-            color: white;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        
-        .fee-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 15px;
-        }
-        
-        .fee-btn {
-            padding: 10px 20px;
-            border: 2px solid #2a2a2a;
-            background: #252525;
-            color: #999;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            flex: 1;
-            max-width: 120px;
-        }
-        
-        .fee-btn.active {
-            border-color: #3b82f6;
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .fee-info {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        /* Reveal Section */
-        #revealSection {
-            background: linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 100%);
-            padding: 40px;
-            border-radius: 16px;
-            margin-top: 30px;
-            border: 1px solid #2a2a2a;
-            text-align: center;
-        }
-        
-        #selectedCount {
-            font-size: 24px;
-            margin-bottom: 16px;
-            font-weight: 600;
-        }
-        
-        #totalCost {
-            color: #3b82f6;
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 30px;
-        }
-        
-        #revealBtn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            padding: 16px 48px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-        
-        #revealBtn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.4);
-        }
-        
-        #revealBtn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Payment Modal */
-        #paymentModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 1001;
-            backdrop-filter: blur(10px);
-        }
-        
-        #paymentBox {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1a1a1a;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-            z-index: 1002;
-            border: 1px solid #2a2a2a;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-        }
-        
-        #paymentAddress {
-            background: #0a0a0a;
-            border: 1px solid #3b82f6;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            word-break: break-all;
-            font-family: 'Courier New', monospace;
-            color: #3b82f6;
-        }
-        
-        .copy-btn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        
-        .message-box {
-            padding: 20px;
-            border-radius: 12px;
-            margin: 20px auto;
-            max-width: 600px;
-            text-align: center;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateY(-10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        #noWalletsMsg, #errorBox {
-            background: #7f1d1d;
-            border: 1px solid #dc2626;
-            color: #fecaca;
-        }
-        
-        #loadingBox {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            color: #999;
-        }
-        
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #333;
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        #emptyMessage {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            padding: 60px 40px;
-            text-align: center;
-            color: #666;
-            border-radius: 12px;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Light Waves Reveals</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background:#0a0a0a; color:#e0e0e0;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+      min-height:100vh; line-height:1.6;
+    }
+
+    /* Header Bar */
+    .header-bar {
+      background:linear-gradient(135deg,#1a1a1a 0%,#2a2a2a 100%);
+      border-bottom:1px solid #3a3a3a; padding:15px 0;
+      position:sticky; top:0; z-index:100; backdrop-filter:blur(10px);
+      background-color:rgba(26,26,26,0.95);
+    }
+    .header-content {
+      max-width:1200px; margin:0 auto; padding:0 20px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .back-button {
+      display:inline-flex; align-items:center; gap:8px; color:white; text-decoration:none;
+      font-family:'Cinzel',serif; font-size:16px; font-weight:400; transition:.3s; border:none; cursor:pointer; background:none; padding:10px 0;
+    }
+    .back-button:hover { opacity:.8; transform:translateX(-3px); }
+    .brand-name { font-family:'Cinzel',serif; font-size:30px; font-weight:400; color:white; letter-spacing:2px; }
+    .security-badge { display:flex; align-items:center; gap:6px; color:#10b981; font-size:14px; }
+    .security-badge svg { width:16px; height:16px; }
+
+    #mainContainer { max-width:1200px; margin:0 auto; padding:20px; }
+    .title-section { text-align:center; padding:40px 20px 40px; }
+    .main-title {
+      font-size:64px; font-weight:700; margin-bottom:20px;
+      background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-1px;
+    }
+
+    /* Wallet Connection */
+    .wallet-section {
+      background:#1a1a1a; border-radius:16px; padding:30px; margin-bottom:30px; border:1px solid #2a2a2a; text-align:center;
+    }
+    .wallet-section h2 { margin-bottom:20px; color:white; font-size:24px; }
+    .wallet-section p { color:#666; margin-bottom:30px; font-size:16px; }
+    #connectWalletBtn {
+      background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);
+      color:white; border:none; padding:16px 40px; border-radius:12px; font-size:18px; font-weight:600; cursor:pointer; transition:.3s;
+      box-shadow:0 4px 15px rgba(59,130,246,.3);
+    }
+    #connectWalletBtn:hover { transform:translateY(-2px); box-shadow:0 6px 25px rgba(59,130,246,.4); }
+    #walletAddress {
+      color:#3b82f6; font-family:'Courier New',monospace; font-size:16px; margin-top:20px; padding:12px 20px; background:rgba(59,130,246,.1);
+      border-radius:8px; display:inline-block;
+    }
+
+    /* Wallet Modal */
+    #walletOverlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:999; backdrop-filter:blur(10px);
+    }
+    #walletSelectionBox {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:#1a1a1a; padding:40px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,.8);
+      z-index:1000; border:1px solid #2a2a2a; max-width:400px; width:90%;
+    }
+    .modal-header { text-align:center; margin-bottom:30px; }
+    .modal-header h3 { color:#fff; font-size:28px; font-weight:600; margin-bottom:10px; }
+    .modal-header p { color:#666; font-size:14px; }
+
+    .wallet-option {
+      background:#252525; border:2px solid transparent; padding:20px; margin:12px 0; border-radius:12px; cursor:pointer; transition:.3s;
+      display:flex; align-items:center; gap:16px; position:relative;
+    }
+    .wallet-option.disabled { opacity:.5; cursor:not-allowed; }
+    .wallet-option:not(.disabled):hover { border-color:#3b82f6; background:#2a2a2a; transform:translateX(5px); }
+
+    .wallet-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .wallet-icon img { width:100%; height:100%; object-fit:cover; }
+    .wallet-icon.fallback { background:#3b82f6; font-weight:bold; color:white; }
+
+    .wallet-name { flex:1; font-weight:500; color:#e0e0e0; }
+    .wallet-status { font-size:12px; color:#666; }
+
+    .close-btn {
+      position:absolute; top:20px; right:20px; background:none; border:none; color:#666; font-size:28px; cursor:pointer; transition:.3s;
+      width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:50%;
+    }
+    .close-btn:hover { color:#fff; background:rgba(255,255,255,.1); }
+
+    /* LightWaves list */
+    #lightwavesSection { margin-top:40px; }
+    .section-header {
+      background:#1a1a1a; padding:20px; border-radius:12px 12px 0 0; border:1px solid #2a2a2a; border-bottom:none;
+    }
+    .section-header h2 { color:white; font-size:24px; font-weight:600; margin-bottom:8px; }
+    .section-header p { color:#666; font-size:14px; }
+
+    .totals-line { color:#999; font-size:13px; margin-top:6px; }
+
+    .lightwave-list {
+      background:#141414; border:1px solid #2a2a2a; border-top:none; border-radius:0 0 12px 12px; padding:20px;
+    }
+    .lightwave-item {
+      background:#1a1a1a; border:1px solid #2a2a2a; padding:20px; margin:12px 0; border-radius:12px;
+      display:flex; align-items:center; gap:20px; transition:.3s;
+    }
+    .lightwave-item:hover { border-color:#3b82f6; background:#1e1e1e; box-shadow:0 4px 12px rgba(59,130,246,.2); }
+
+    .lightwave-item input[type="checkbox"] { width:24px; height:24px; accent-color:#3b82f6; cursor:pointer; }
+    .lw-number { color:white; font-weight:700; font-size:18px; }
+    .lw-status { color:#666; font-size:14px; margin-left:auto; padding:6px 12px; background:rgba(255,255,255,.05); border-radius:20px; }
+
+    /* Fee level + reveal */
+    .fee-level-section {
+      background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:20px; margin:20px 0; text-align:center;
+    }
+    .fee-level-section h3 { color:white; margin-bottom:15px; font-size:18px; }
+    .fee-buttons { display:flex; gap:10px; justify-content:center; margin-bottom:15px; }
+    .fee-btn {
+      padding:10px 20px; border:2px solid #2a2a2a; background:#252525; color:#999; border-radius:8px; cursor:pointer; transition:.3s; flex:1; max-width:120px;
+    }
+    .fee-btn.active { border-color:#3b82f6; background:#3b82f6; color:white; }
+    .fee-info { color:#666; font-size:14px; }
+
+    #revealSection {
+      background:linear-gradient(135deg,#1a1a1a 0%,#1e1e1e 100%);
+      padding:40px; border-radius:16px; margin-top:30px; border:1px solid #2a2a2a; text-align:center;
+    }
+    #selectedCount { font-size:24px; margin-bottom:16px; font-weight:600; }
+    #totalCost { color:#3b82f6; font-size:20px; font-weight:700; margin-bottom:30px; }
+    #revealBtn {
+      background:linear-gradient(135deg,#10b981 0%,#059669 100%); color:white; border:none; padding:16px 48px; border-radius:12px; font-size:18px; font-weight:600; cursor:pointer; transition:.3s;
+      box-shadow:0 4px 15px rgba(16,185,129,.3);
+    }
+    #revealBtn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 25px rgba(16,185,129,.4); }
+    #revealBtn:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* Payment Modal */
+    #paymentModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:1001; backdrop-filter:blur(10px); }
+    #paymentBox {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:#1a1a1a; padding:40px; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,.8);
+      z-index:1002; border:1px solid #2a2a2a; max-width:500px; width:90%; text-align:center;
+    }
+    #paymentAddress {
+      background:#0a0a0a; border:1px solid #3b82f6; padding:15px; border-radius:8px; margin:20px 0; word-break:break-all;
+      font-family:'Courier New',monospace; color:#3b82f6;
+    }
+    .copy-btn { background:#3b82f6; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-top:10px; }
+
+    /* Messages */
+    .message-box {
+      padding:20px; border-radius:12px; margin:20px auto; max-width:600px; text-align:center; animation:slideIn .3s ease-out;
+    }
+    @keyframes slideIn { from{ transform:translateY(-10px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+    #noWalletsMsg, #errorBox { background:#7f1d1d; border:1px solid #dc2626; color:#fecaca; }
+    #loadingBox { background:#1a1a1a; border:1px solid #2a2a2a; color:#999; }
+    .loading-spinner {
+      display:inline-block; width:20px; height:20px; border:3px solid #333; border-top-color:#3b82f6; border-radius:50%;
+      animation:spin 1s linear infinite; margin-left:10px;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    #emptyMessage { background:#1a1a1a; border:1px solid #2a2a2a; padding:60px 40px; text-align:center; color:#666; border-radius:12px; }
+
+    .hidden { display:none !important; }
+  </style>
 </head>
 <body>
-    <!-- Professional Header Bar -->
-    <div class="header-bar">
-        <div class="header-content">
-            <a href="https://kanetix.io" class="back-button">
-                ← BACK TO SITE
-            </a>
-            
-            <div class="brand-name">KANETIX</div>
-            
-            <div class="security-badge">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2L3.5 7v6c0 4.5 3.5 8.5 8.5 9.5 5-1 8.5-5 8.5-9.5V7L12 2z" opacity="0.3"/>
-                    <path d="M12 2L3.5 7v6c0 4.5 3.5 8.5 8.5 9.5 5-1 8.5-5 8.5-9.5V7L12 2zm0 9l-3 3 1.5 1.5L12 14l3.5 3.5L17 16l-5-5z"/>
-                </svg>
-                Secure Connection
-            </div>
-        </div>
+  <!-- Header -->
+  <div class="header-bar">
+    <div class="header-content">
+      <a href="https://kanetix.io" class="back-button">← BACK TO SITE</a>
+      <div class="brand-name">KANETIX</div>
+      <div class="security-badge">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L3.5 7v6c0 4.5 3.5 8.5 8.5 9.5 5-1 8.5-5 8.5-9.5V7L12 2z" opacity="0.3"></path>
+          <path d="M12 2L3.5 7v6c0 4.5 3.5 8.5 8.5 9.5 5-1 8.5-5 8.5-9.5V7L12 2zm0 9l-3 3 1.5 1.5L12 14l3.5 3.5L17 16l-5-5z"></path>
+        </svg>
+        Secure Connection
+      </div>
+    </div>
+  </div>
+
+  <div id="mainContainer">
+    <div class="title-section">
+      <h1 class="main-title">Light Waves Reveals</h1>
     </div>
 
-    <div id="mainContainer">
-        <div class="title-section">
-            <h1 class="main-title">Light Waves Reveals</h1>
-        </div>
-
-        <div class="wallet-section">
-            <h2>Step 1: Connect Your Wallet</h2>
-            <p>Select your Bitcoin wallet to view unrevealed Light Waves</p>
-            <button id="connectWalletBtn">Connect Wallet</button>
-            <div id="walletAddress" class="hidden"></div>
-        </div>
-
-        <div id="walletOverlay">
-            <div id="walletSelectionBox">
-                <button class="close-btn" onclick="closeWalletSelection()">×</button>
-                <div class="modal-header">
-                    <h3>Select Your Wallet</h3>
-                    <p>Choose a wallet to connect</p>
-                </div>
-                
-                <div id="xverseOption" class="wallet-option">
-                    <div class="wallet-icon">
-                        <img src="XVerse.png" 
-                             alt="Xverse" 
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='X'; this.parentElement.classList.add('fallback');">
-                    </div>
-                    <div>
-                        <div class="wallet-name">Xverse</div>
-                        <div class="wallet-status" id="xverseStatus">Checking...</div>
-                    </div>
-                </div>
-                
-                <div id="unisatOption" class="wallet-option">
-                    <div class="wallet-icon">
-                        <img src="Unisat.png" 
-                             alt="Unisat" 
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='U'; this.parentElement.classList.add('fallback');">
-                    </div>
-                    <div>
-                        <div class="wallet-name">Unisat</div>
-                        <div class="wallet-status" id="unisatStatus">Checking...</div>
-                    </div>
-                </div>
-                
-                <div id="leatherOption" class="wallet-option">
-                    <div class="wallet-icon">
-                        <img src="Leather.png" 
-                             alt="Leather" 
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='L'; this.parentElement.classList.add='fallback');">
-                    </div>
-                    <div>
-                        <div class="wallet-name">Leather (Hiro)</div>
-                        <div class="wallet-status" id="leatherStatus">Checking...</div>
-                    </div>
-                </div>
-                
-                <div id="magicedenOption" class="wallet-option">
-                    <div class="wallet-icon">
-                        <img src="ME.png" 
-                             alt="Magic Eden" 
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='M'; this.parentElement.classList.add='fallback');">
-                    </div>
-                    <div>
-                        <div class="wallet-name">Magic Eden</div>
-                        <div class="wallet-status" id="magicedenStatus">Checking...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="noWalletsMsg" class="message-box hidden">
-            <strong>No Bitcoin wallets detected</strong><br>
-            Please install Xverse, Unisat, Leather, or Magic Eden browser extension
-        </div>
-        
-        <div id="loadingBox" class="message-box hidden">
-            Loading your Light Waves
-            <span class="loading-spinner"></span>
-        </div>
-
-        <div id="lightwavesSection" class="hidden">
-            <div class="section-header">
-                <h2>Step 2: Select Light Waves to Reveal</h2>
-                <p>Choose which Light Waves you want to reveal. Each selection will show the estimated cost.</p>
-            </div>
-            <div class="lightwave-list">
-                <div id="lightwavesRepeater">
-                </div>
-                <div id="emptyMessage" class="hidden">
-                    <h3 style="color: white; margin-bottom: 10px;">No Unrevealed Light Waves Found</h3>
-                    <p>This wallet doesn't contain any unrevealed Light Waves.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="revealSection" class="hidden">
-            <h2 style="color: white; margin-bottom: 30px;">Step 3: Confirm and Reveal</h2>
-            
-            <!-- Fee Level Selection -->
-            <div class="fee-level-section">
-                <h3>Select Fee Level</h3>
-                <div class="fee-buttons">
-                    <button class="fee-btn" data-level="low">Low</button>
-                    <button class="fee-btn active" data-level="medium">Medium</button>
-                    <button class="fee-btn" data-level="high">High</button>
-                </div>
-                <div class="fee-info" id="feeInfo"></div>
-            </div>
-            
-            <div id="selectedCount"></div>
-            <div id="totalCost"></div>
-            <button id="revealBtn">Reveal Selected Light Waves</button>
-        </div>
-
-        <!-- Payment Modal -->
-        <div id="paymentModal">
-            <div id="paymentBox">
-                <button class="close-btn" onclick="closePaymentModal()">×</button>
-                <h2 style="color: white; margin-bottom: 20px;">Complete Payment</h2>
-                <p style="color: #999; margin-bottom: 20px;">Send the exact amount to this address:</p>
-                
-                <div id="paymentAmount" style="font-size: 24px; color: #3b82f6; margin-bottom: 20px;"></div>
-                <div id="paymentAddress"></div>
-                <button class="copy-btn" onclick="copyAddress()">Copy Address</button>
-                
-                <p style="color: #666; margin-top: 20px; font-size: 14px;">
-                    Order ID: <span id="orderId"></span>
-                </p>
-            </div>
-        </div>
-
-        <div id="errorBox" class="message-box hidden">
-            <span id="errorMessage"></span>
-        </div>
+    <div class="wallet-section">
+      <h2>Step 1: Connect Your Wallet</h2>
+      <p>Select your Bitcoin wallet to view unrevealed Light Waves</p>
+      <button id="connectWalletBtn">Connect Wallet</button>
+      <div id="walletAddress" class="hidden"></div>
     </div>
 
-    <script>
-        // CORRECTED: Use the Railway production URL
-        const API_BASE_URL = 'https://lightwave-reveal-production.up.railway.app';
+    <!-- Wallet Modal -->
+    <div id="walletOverlay">
+      <div id="walletSelectionBox">
+        <button class="close-btn" onclick="closeWalletSelection()">×</button>
+        <div class="modal-header">
+          <h3>Select Your Wallet</h3>
+          <p>Choose a wallet to connect</p>
+        </div>
 
-        var connectedWallet = null;
-        let selectedLightWaves = new Set();
-        let unrevealedLightWaves = [];
-        let walletCheckInterval = null;
-        let selectedFeeLevel = 'medium';
-        let currentFeeRates = null;
+        <div id="xverseOption" class="wallet-option">
+          <div class="wallet-icon">
+            <img src="XVerse.png" alt="Xverse"
+                 onerror="this.style.display='none'; this.parentElement.classList.add('fallback'); this.parentElement.textContent='X';">
+          </div>
+          <div>
+            <div class="wallet-name">Xverse</div>
+            <div class="wallet-status" id="xverseStatus">Checking...</div>
+          </div>
+        </div>
 
-        document.addEventListener('DOMContentLoaded', function() {
-            setupEventHandlers();
-            setTimeout(() => {
-                checkWalletsRepeatedly();
-                fetchFeeRates();
-            }, 500);
+        <div id="unisatOption" class="wallet-option">
+          <div class="wallet-icon">
+            <img src="Unisat.png" alt="Unisat"
+                 onerror="this.style.display='none'; this.parentElement.classList.add('fallback'); this.parentElement.textContent='U';">
+          </div>
+          <div>
+            <div class="wallet-name">Unisat</div>
+            <div class="wallet-status" id="unisatStatus">Checking...</div>
+          </div>
+        </div>
+
+        <div id="leatherOption" class="wallet-option">
+          <div class="wallet-icon">
+            <img src="Leather.png" alt="Leather"
+                 onerror="this.style.display='none'; this.parentElement.classList.add('fallback'); this.parentElement.textContent='L';">
+          </div>
+          <div>
+            <div class="wallet-name">Leather (Hiro)</div>
+            <div class="wallet-status" id="leatherStatus">Checking...</div>
+          </div>
+        </div>
+
+        <div id="magicedenOption" class="wallet-option">
+          <div class="wallet-icon">
+            <img src="ME.png" alt="Magic Eden"
+                 onerror="this.style.display='none'; this.parentElement.classList.add('fallback'); this.parentElement.textContent='M';">
+          </div>
+          <div>
+            <div class="wallet-name">Magic Eden</div>
+            <div class="wallet-status" id="magicedenStatus">Checking...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="noWalletsMsg" class="message-box hidden">
+      <strong>No Bitcoin wallets detected</strong><br/>
+      Please install Xverse, Unisat, Leather, or Magic Eden browser extension
+    </div>
+
+    <div id="loadingBox" class="message-box hidden">
+      Loading your Light Waves <span class="loading-spinner"></span>
+    </div>
+
+    <div id="lightwavesSection" class="hidden">
+      <div class="section-header">
+        <h2>Step 2: Select Light Waves to Reveal</h2>
+        <p>Choose which Light Waves you want to reveal. Each selection will show the estimated cost.</p>
+        <div id="totalsLine" class="totals-line hidden"></div>
+      </div>
+      <div class="lightwave-list">
+        <div id="lightwavesRepeater"></div>
+        <div id="emptyMessage" class="hidden">
+          <h3 style="color:white; margin-bottom:10px;">No Unrevealed Light Waves Found</h3>
+          <p>This wallet doesn't contain any unrevealed Light Waves.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="revealSection" class="hidden">
+      <h2 style="color:white; margin-bottom:30px;">Step 3: Confirm and Reveal</h2>
+
+      <div class="fee-level-section">
+        <h3>Select Fee Level</h3>
+        <div class="fee-buttons">
+          <button class="fee-btn" data-level="low">Low</button>
+          <button class="fee-btn active" data-level="medium">Medium</button>
+          <button class="fee-btn" data-level="high">High</button>
+        </div>
+        <div class="fee-info" id="feeInfo"></div>
+      </div>
+
+      <div id="selectedCount"></div>
+      <div id="totalCost"></div>
+      <button id="revealBtn">Reveal Selected Light Waves</button>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal">
+      <div id="paymentBox">
+        <button class="close-btn" onclick="closePaymentModal()">×</button>
+        <h2 style="color:white; margin-bottom:20px;">Complete Payment</h2>
+        <p style="color:#999; margin-bottom:20px;">Send the exact amount to this address:</p>
+
+        <div id="paymentAmount" style="font-size:24px; color:#3b82f6; margin-bottom:20px;"></div>
+        <div id="paymentAddress"></div>
+        <button class="copy-btn" onclick="copyAddress()">Copy Address</button>
+
+        <p style="color:#666; margin-top:20px; font-size:14px;">
+          Order ID: <span id="orderId"></span>
+        </p>
+      </div>
+    </div>
+
+    <div id="errorBox" class="message-box hidden">
+      <span id="errorMessage"></span>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Railway production URL
+    const API_BASE_URL = 'https://lightwave-reveal-production.up.railway.app';
+
+    let connectedWallet = null;
+    let selectedLightWaves = new Set();
+    let unrevealedLightWaves = [];
+    let walletCheckInterval = null;
+    let selectedFeeLevel = 'medium';
+    let currentFeeRates = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupEventHandlers();
+      setTimeout(() => {
+        checkWalletsRepeatedly();
+        fetchFeeRates();
+      }, 500);
+    });
+
+    function checkWalletsRepeatedly() {
+      detectWallets();
+      walletCheckInterval = setInterval(() => detectWallets(), 2000);
+    }
+
+    function setupEventHandlers() {
+      document.getElementById('connectWalletBtn').addEventListener('click', showWalletSelection);
+
+      document.getElementById('walletOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeWalletSelection();
+      });
+
+      document.getElementById('revealBtn').addEventListener('click', revealSelected);
+
+      document.querySelectorAll('.fee-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.fee-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          selectedFeeLevel = this.dataset.level;
+          updateFeeEstimate();
+        });
+      });
+    }
+
+    async function fetchFeeRates() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/fee-rates`);
+        if (!response.ok) throw new Error('Failed to fetch fee rates');
+        currentFeeRates = await response.json();
+        updateFeeInfo();
+      } catch (err) {
+        console.error('Error fetching fee rates:', err);
+      }
+    }
+
+    function updateFeeInfo() {
+      if (!currentFeeRates) return;
+      const feeInfo = document.getElementById('feeInfo');
+      feeInfo.innerHTML = `
+        Low: ${currentFeeRates.low} sat/vB |
+        Medium: ${currentFeeRates.medium} sat/vB |
+        High: ${currentFeeRates.high} sat/vB
+      `;
+    }
+
+    function detectWallets() {
+      const wallets = {
+        xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
+        unisat: !!window.unisat,
+        leather: !!window.LeatherProvider,
+        magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
+      };
+
+      updateWalletStatus('xverse', wallets.xverse);
+      updateWalletStatus('unisat', wallets.unisat);
+      updateWalletStatus('leather', wallets.leather);
+      updateWalletStatus('magiceden', wallets.magiceden);
+
+      return wallets;
+    }
+
+    function updateWalletStatus(walletName, isDetected) {
+      const statusEl = document.getElementById(walletName + 'Status');
+      const optionEl = document.getElementById(walletName + 'Option');
+
+      if (!statusEl || !optionEl) return;
+
+      const currentStatus = statusEl.textContent;
+      const newStatus = isDetected ? 'Ready' : 'Not installed';
+
+      if (currentStatus === newStatus) return;
+
+      if (isDetected) {
+        statusEl.textContent = 'Ready';
+        statusEl.style.color = '#10b981';
+        optionEl.classList.remove('disabled');
+
+        // Rebind click handler cleanly
+        const clone = optionEl.cloneNode(true);
+        optionEl.parentNode.replaceChild(clone, optionEl);
+        const el = document.getElementById(walletName + 'Option');
+
+        switch (walletName) {
+          case 'xverse':    el.addEventListener('click', () => connectXverse()); break;
+          case 'unisat':    el.addEventListener('click', () => connectUnisat()); break;
+          case 'leather':   el.addEventListener('click', () => connectLeather()); break;
+          case 'magiceden': el.addEventListener('click', () => connectMagicEden()); break;
+        }
+      } else {
+        statusEl.textContent = 'Not installed';
+        statusEl.style.color = '#666';
+        optionEl.classList.add('disabled');
+      }
+    }
+
+    function showWalletSelection() {
+      const wallets = detectWallets();
+      const hasAnyWallet = Object.values(wallets).some(Boolean);
+
+      if (!hasAnyWallet) {
+        document.getElementById('noWalletsMsg').classList.remove('hidden');
+        setTimeout(() => document.getElementById('noWalletsMsg').classList.add('hidden'), 5000);
+        return;
+      }
+      document.getElementById('walletOverlay').style.display = 'block';
+    }
+
+    function closeWalletSelection() {
+      document.getElementById('walletOverlay').style.display = 'none';
+    }
+
+    async function connectXverse() {
+      const provider =
+        (window.XverseProviders && window.XverseProviders.BitcoinProvider) ||
+        window.xverse ||
+        window.BitcoinProvider;
+
+      if (!provider) return showError('Xverse wallet not detected');
+
+      try {
+        const resp = await provider.request('wallet_connect', {
+          addresses: ['ordinals', 'payment'],
+          network: 'Mainnet',
+          message: 'Light Waves: connect for reveal'
         });
 
-        function checkWalletsRepeatedly() {
-            detectWallets();
-            walletCheckInterval = setInterval(() => {
-                detectWallets();
-            }, 2000);
+        if (resp?.result?.addresses?.length) {
+          const addrs = resp.result.addresses;
+          const ord = addrs.find(a => a.purpose === 'ordinals');
+          const pay = addrs.find(a => a.purpose === 'payment') || ord;
+
+          connectedWallet = {
+            type: 'xverse',
+            ordinalsAddress: ord.address,
+            paymentAddress: pay.address,
+            ordPub: ord.publicKey || '',
+            payPub: pay.publicKey || ord.publicKey || '',
+            provider
+          };
+          onWalletConnected();
+        } else {
+          throw new Error('Xverse did not return addresses');
+        }
+      } catch (err) {
+        console.error('Xverse error:', err);
+        showError('Failed to connect Xverse: ' + err.message);
+      }
+    }
+
+    async function connectUnisat() {
+      if (!window.unisat) return showError('Unisat wallet not detected');
+      try {
+        const accounts = await window.unisat.requestAccounts();
+        const publicKey = await window.unisat.getPublicKey();
+        connectedWallet = {
+          type: 'unisat',
+          ordinalsAddress: accounts[0],
+          paymentAddress: accounts[0],
+          ordPub: publicKey,
+          payPub: publicKey,
+          provider: window.unisat
+        };
+        onWalletConnected();
+      } catch (err) {
+        showError('Connection failed: ' + err.message);
+      }
+    }
+
+    async function connectLeather() {
+      if (!window.LeatherProvider) return showError('Leather wallet not detected');
+      try {
+        const response = await window.LeatherProvider.request('getAddresses');
+        if (response.status !== 'success') throw new Error('Failed to get addresses');
+
+        const addresses = response.result.addresses;
+        const taproot = addresses.find(a => a.type === 'p2tr');
+        const payment = addresses.find(a => a.type === 'p2wpkh') || taproot;
+        if (!taproot) return showError('Enable Taproot addresses in Leather');
+
+        connectedWallet = {
+          type: 'leather',
+          ordinalsAddress: taproot.address,
+          paymentAddress: payment.address,
+          ordPub: taproot.publicKey,
+          payPub: payment.publicKey,
+          provider: window.LeatherProvider
+        };
+        onWalletConnected();
+      } catch (err) {
+        showError('Connection failed: ' + err.message);
+      }
+    }
+
+    async function connectMagicEden() {
+      try {
+        const provider = window.magicEden?.bitcoin;
+        if (!provider || !provider.isMagicEden) return showError('Magic Eden wallet not detected');
+
+        const response = await provider.connect();
+        if (!response || !response.address) throw new Error('No address returned');
+
+        connectedWallet = {
+          type: 'magiceden',
+          ordinalsAddress: response.address,
+          paymentAddress: response.address,
+          ordPub: response.publicKey || '',
+          payPub: response.publicKey || '',
+          provider
+        };
+        onWalletConnected();
+      } catch (err) {
+        console.error('MagicEden error:', err);
+        showError('Failed to connect Magic Eden: ' + err.message);
+      }
+    }
+
+    function onWalletConnected() {
+      if (walletCheckInterval) clearInterval(walletCheckInterval);
+      closeWalletSelection();
+
+      document.getElementById('connectWalletBtn').style.display = 'none';
+      document.getElementById('walletAddress').textContent =
+        `Connected: ${connectedWallet.ordinalsAddress.slice(0,6)}...${connectedWallet.ordinalsAddress.slice(-4)}`;
+      document.getElementById('walletAddress').classList.remove('hidden');
+
+      loadUnrevealedLightWaves();
+    }
+
+    async function loadUnrevealedLightWaves() {
+      document.getElementById('loadingBox').classList.remove('hidden');
+      document.getElementById('lightwavesSection').classList.add('hidden');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/check-wallet`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: connectedWallet.ordinalsAddress })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.details || error.error || 'Failed to load Light Waves');
         }
 
-        function setupEventHandlers() {
-            document.getElementById('connectWalletBtn').addEventListener('click', showWalletSelection);
-            
-            document.getElementById('walletOverlay').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeWalletSelection();
-                }
-            });
-            
-            document.getElementById('revealBtn').addEventListener('click', revealSelected);
-            
-            // Fee level buttons
-            document.querySelectorAll('.fee-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.fee-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    selectedFeeLevel = this.dataset.level;
-                    updateFeeEstimate();
-                });
-            });
+        const data = await response.json();
+        const totalsEl = document.getElementById('totalsLine');
+
+        if (data?.totals) {
+          totalsEl.textContent = `Owned: ${data.totals.owned} | In Range: ${data.totals.inRange} | Unrevealed: ${data.totals.unrevealed}`;
+          totalsEl.classList.remove('hidden');
+        } else {
+          totalsEl.classList.add('hidden');
         }
 
-        async function fetchFeeRates() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/fee-rates`);
-                if (!response.ok) throw new Error('Failed to fetch fee rates');
-                
-                currentFeeRates = await response.json();
-                updateFeeInfo();
-            } catch (error) {
-                console.error('Error fetching fee rates:', error);
-                // No fallback - let it fail
-            }
+        unrevealedLightWaves = (data && data.unrevealed) ? data.unrevealed : [];
+        document.getElementById('loadingBox').classList.add('hidden');
+
+        if (unrevealedLightWaves.length === 0) {
+          document.getElementById('emptyMessage').classList.remove('hidden');
+          document.getElementById('lightwavesSection').classList.remove('hidden');
+        } else {
+          // sort by sat ordinal ascending for consistency
+          unrevealedLightWaves.sort((a, b) => BigInt(a.satOrdinal) > BigInt(b.satOrdinal) ? 1 : -1);
+          displayLightWaves(unrevealedLightWaves);
+          document.getElementById('lightwavesSection').classList.remove('hidden');
+        }
+      } catch (err) {
+        document.getElementById('loadingBox').classList.add('hidden');
+        showError('Failed to load Light Waves: ' + err.message);
+      }
+    }
+
+    function displayLightWaves(lightWaves) {
+      const repeater = document.getElementById('lightwavesRepeater');
+      repeater.innerHTML = '';
+
+      lightWaves.forEach((lw, index) => {
+        const item = document.createElement('div');
+        item.className = 'lightwave-item';
+        item.innerHTML = `
+          <input type="checkbox" id="lw-check-${index}" data-id="${lw.id}">
+          <span class="lw-number">${lw.label ? lw.label : ('Sat ' + lw.satOrdinal)}</span>
+          <span class="lw-status">${lw.revealed ? 'REVEALED' : 'UNREVEALED'}</span>
+        `;
+
+        const checkbox = item.querySelector('input');
+        checkbox.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            selectedLightWaves.add(lw.id);
+          } else {
+            selectedLightWaves.delete(lw.id);
+          }
+          updateRevealUI();
+        });
+
+        repeater.appendChild(item);
+      });
+    }
+
+    function updateRevealUI() {
+      const count = selectedLightWaves.size;
+      if (count > 0) {
+        document.getElementById('revealSection').classList.remove('hidden');
+        document.getElementById('selectedCount').textContent =
+          `${count} Light Wave${count > 1 ? 's' : ''} selected`;
+        updateFeeEstimate();
+      } else {
+        document.getElementById('revealSection').classList.add('hidden');
+      }
+    }
+
+    async function updateFeeEstimate() {
+      const count = selectedLightWaves.size;
+
+      if (!currentFeeRates) await fetchFeeRates();
+      if (!currentFeeRates) {
+        document.getElementById('totalCost').textContent = 'Unable to calculate fees';
+        return;
+      }
+
+      const feeRate = currentFeeRates[selectedFeeLevel];
+      const estimatedVBytes = count * 175;      // your model
+      const networkFee = Math.ceil(estimatedVBytes * feeRate);
+      const serviceFee = count * 546;           // your postage model
+      const totalCost = networkFee + serviceFee;
+      const btcValue = (totalCost / 100000000).toFixed(8);
+
+      document.getElementById('totalCost').innerHTML = `
+        Estimated Total: ${totalCost.toLocaleString()} sats<br>
+        <span style="font-size:16px; color:#999;">(~${btcValue} BTC)</span>
+      `;
+    }
+
+    async function revealSelected() {
+      if (selectedLightWaves.size === 0) return;
+
+      const revealBtn = document.getElementById('revealBtn');
+      revealBtn.disabled = true;
+      revealBtn.textContent = 'Creating reveal order...';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/create-reveal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lightWaveIds: Array.from(selectedLightWaves),
+            receiveAddress: connectedWallet.ordinalsAddress,
+            feeLevel: selectedFeeLevel
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.details || error.error || 'Failed to create order');
         }
 
-        function updateFeeInfo() {
-            if (!currentFeeRates) return;
-            
-            const feeInfo = document.getElementById('feeInfo');
-            feeInfo.innerHTML = `
-                Low: ${currentFeeRates.low} sat/vB | 
-                Medium: ${currentFeeRates.medium} sat/vB | 
-                High: ${currentFeeRates.high} sat/vB
-            `;
+        const data = await response.json();
+        if (data.status === 'success') {
+          showPaymentModal(data);
+        } else {
+          throw new Error(data.error || 'Failed to create reveal order');
         }
+      } catch (err) {
+        showError('Failed to create reveal order: ' + err.message);
+      } finally {
+        revealBtn.disabled = false;
+        revealBtn.textContent = 'Reveal Selected Light Waves';
+      }
+    }
 
-        function detectWallets() {
-            const wallets = {
-                xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
-                unisat: !!window.unisat,
-                leather: !!window.LeatherProvider,
-                magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
-            };
-            
-            updateWalletStatus('xverse', wallets.xverse);
-            updateWalletStatus('unisat', wallets.unisat);
-            updateWalletStatus('leather', wallets.leather);
-            updateWalletStatus('magiceden', wallets.magiceden);
-            
-            return wallets;
-        }
+    function showPaymentModal(orderData) {
+      document.getElementById('paymentAmount').textContent = `${orderData.totalAmount} sats`;
+      document.getElementById('paymentAddress').textContent = orderData.paymentAddress || '';
+      document.getElementById('orderId').textContent = orderData.orderId || '';
+      document.getElementById('paymentModal').style.display = 'block';
+    }
 
-        function updateWalletStatus(walletName, isDetected) {
-            const statusEl = document.getElementById(walletName + 'Status');
-            const optionEl = document.getElementById(walletName + 'Option');
-            
-            if (statusEl && optionEl) {
-                const currentStatus = statusEl.textContent;
-                const newStatus = isDetected ? 'Ready' : 'Not installed';
-                
-                if (currentStatus !== newStatus) {
-                    if (isDetected) {
-                        statusEl.textContent = 'Ready';
-                        statusEl.style.color = '#10b981';
-                        optionEl.classList.remove('disabled');
-                        
-                        if (currentStatus !== 'Ready') {
-                            optionEl.replaceWith(optionEl.cloneNode(true));
-                            const newOptionEl = document.getElementById(walletName + 'Option');
-                            
-                            switch(walletName) {
-                                case 'xverse':
-                                    newOptionEl.addEventListener('click', () => connectXverse());
-                                    break;
-                                case 'unisat':
-                                    newOptionEl.addEventListener('click', () => connectUnisat());
-                                    break;
-                                case 'leather':
-                                    newOptionEl.addEventListener('click', () => connectLeather());
-                                    break;
-                                case 'magiceden':
-                                    newOptionEl.addEventListener('click', () => connectMagicEden());
-                                    break;
-                            }
-                        }
-                    } else {
-                        statusEl.textContent = 'Not installed';
-                        statusEl.style.color = '#666';
-                        optionEl.classList.add('disabled');
-                    }
-                }
-            }
-        }
+    function closePaymentModal() {
+      document.getElementById('paymentModal').style.display = 'none';
+      selectedLightWaves.clear();
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      updateRevealUI();
+      // (Optional) Re-fetch list after payment confirmation if you add a status poll.
+      // loadUnrevealedLightWaves();
+    }
 
-        function showWalletSelection() {
-            const wallets = detectWallets();
-            const hasAnyWallet = Object.values(wallets).some(v => v);
-            
-            if (!hasAnyWallet) {
-                document.getElementById('noWalletsMsg').classList.remove('hidden');
-                setTimeout(() => {
-                    document.getElementById('noWalletsMsg').classList.add('hidden');
-                }, 5000);
-                return;
-            }
-            
-            document.getElementById('walletOverlay').style.display = 'block';
-        }
+    function copyAddress() {
+      const address = document.getElementById('paymentAddress').textContent;
+      if (!address) return;
+      navigator.clipboard.writeText(address);
+      showError('Address copied to clipboard!');
+    }
 
-        function closeWalletSelection() {
-            document.getElementById('walletOverlay').style.display = 'none';
-        }
-
-        async function connectXverse() {
-            const provider = 
-                (window.XverseProviders && window.XverseProviders.BitcoinProvider) ||
-                window.xverse ||
-                window.BitcoinProvider;
-
-            if (!provider) return showError('Xverse wallet not detected');
-
-            try {
-                const resp = await provider.request('wallet_connect', {
-                    addresses: ['ordinals', 'payment'],
-                    network: 'Mainnet',
-                    message: 'Light Waves: connect for reveal'
-                });
-
-                if (resp?.result?.addresses?.length) {
-                    const addrs = resp.result.addresses;
-                    const ord = addrs.find(a => a.purpose === 'ordinals');
-                    const pay = addrs.find(a => a.purpose === 'payment') || ord;
-
-                    connectedWallet = {
-                        type: 'xverse',
-                        ordinalsAddress: ord.address,
-                        paymentAddress: pay.address,
-                        ordPub: ord.publicKey || '',
-                        payPub: pay.publicKey || ord.publicKey || '',
-                        provider
-                    };
-                    onWalletConnected();
-                } else {
-                    throw new Error('Xverse did not return addresses');
-                }
-            } catch (err) {
-                console.error('Xverse error:', err);
-                showError('Failed to connect Xverse: ' + err.message);
-            }
-        }
-
-        async function connectUnisat() {
-            if (!window.unisat) {
-                showError('Unisat wallet not detected');
-                return;
-            }
-            
-            try {
-                const accounts = await window.unisat.requestAccounts();
-                const publicKey = await window.unisat.getPublicKey();
-                
-                connectedWallet = {
-                    type: 'unisat',
-                    ordinalsAddress: accounts[0],
-                    paymentAddress: accounts[0],
-                    ordPub: publicKey,
-                    payPub: publicKey,
-                    provider: window.unisat
-                };
-                
-                onWalletConnected();
-            } catch (error) {
-                showError('Connection failed: ' + error.message);
-            }
-        }
-
-        async function connectLeather() {
-            if (!window.LeatherProvider) {
-                showError('Leather wallet not detected');
-                return;
-            }
-            
-            try {
-                const response = await window.LeatherProvider.request('getAddresses');
-                
-                if (response.status === 'success') {
-                    const addresses = response.result.addresses;
-                    const taproot = addresses.find(a => a.type === 'p2tr');
-                    const payment = addresses.find(a => a.type === 'p2wpkh') || taproot;
-                    
-                    if (!taproot) {
-                        showError('Enable Taproot addresses in Leather wallet');
-                        return;
-                    }
-                    
-                    connectedWallet = {
-                        type: 'leather',
-                        ordinalsAddress: taproot.address,
-                        paymentAddress: payment.address,
-                        ordPub: taproot.publicKey,
-                        payPub: payment.publicKey,
-                        provider: window.LeatherProvider
-                    };
-                    
-                    onWalletConnected();
-                } else {
-                    throw new Error('Failed to get addresses');
-                }
-            } catch (error) {
-                showError('Connection failed: ' + error.message);
-            }
-        }
-
-        async function connectMagicEden() {
-            try {
-                const provider = window.magicEden?.bitcoin;
-                if (!provider || !provider.isMagicEden) {
-                    showError('Magic Eden wallet not detected');
-                    return;
-                }
-
-                const response = await provider.connect();
-                
-                if (response && response.address) {
-                    connectedWallet = {
-                        type: 'magiceden',
-                        ordinalsAddress: response.address,
-                        paymentAddress: response.address,
-                        ordPub: response.publicKey || '',
-                        payPub: response.publicKey || '',
-                        provider: window.magicEden.bitcoin
-                    };
-                    
-                    onWalletConnected();
-                } else {
-                    throw new Error('No address returned');
-                }
-            } catch (err) {
-                console.error('MagicEden error:', err);
-                showError('Failed to connect Magic Eden: ' + err.message);
-            }
-        }
-
-        function onWalletConnected() {
-            if (walletCheckInterval) {
-                clearInterval(walletCheckInterval);
-            }
-            
-            closeWalletSelection();
-            
-            document.getElementById('connectWalletBtn').style.display = 'none';
-            document.getElementById('walletAddress').textContent = 
-                `Connected: ${connectedWallet.ordinalsAddress.slice(0, 6)}...${connectedWallet.ordinalsAddress.slice(-4)}`;
-            document.getElementById('walletAddress').classList.remove('hidden');
-            
-            loadUnrevealedLightWaves();
-        }
-
-        async function loadUnrevealedLightWaves() {
-            document.getElementById('loadingBox').classList.remove('hidden');
-            document.getElementById('lightwavesSection').classList.add('hidden');
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/check-wallet`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        address: connectedWallet.ordinalsAddress,
-                        startIndex: 0,
-                        endIndex: 3332
-                    })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.details || error.error || 'Failed to load Light Waves');
-                }
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    unrevealedLightWaves = data.unrevealed || [];
-                    
-                    document.getElementById('loadingBox').classList.add('hidden');
-                    
-                    if (unrevealedLightWaves.length === 0) {
-                        document.getElementById('emptyMessage').classList.remove('hidden');
-                        document.getElementById('lightwavesSection').classList.remove('hidden');
-                    } else {
-                        displayLightWaves(unrevealedLightWaves);
-                        document.getElementById('lightwavesSection').classList.remove('hidden');
-                    }
-                } else {
-                    throw new Error(data.error || 'Failed to load Light Waves');
-                }
-                
-            } catch (error) {
-                document.getElementById('loadingBox').classList.add('hidden');
-                showError('Failed to load Light Waves: ' + error.message);
-            }
-        }
-
-        function displayLightWaves(lightWaves) {
-            const repeater = document.getElementById('lightwavesRepeater');
-            repeater.innerHTML = '';
-            
-            lightWaves.forEach((lw, index) => {
-                const item = document.createElement('div');
-                item.className = 'lightwave-item';
-                item.innerHTML = `
-                    <input type="checkbox" id="lw-check-${index}" data-id="${lw.id}">
-                    <span class="lw-number">#${lw.number}</span>
-                    <span class="lw-status">${lw.revealed ? 'REVEALED' : 'UNREVEALED'}</span>
-                `;
-                
-                const checkbox = item.querySelector('input');
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        selectedLightWaves.add(lw.id);
-                    } else {
-                        selectedLightWaves.delete(lw.id);
-                    }
-                    updateRevealUI();
-                });
-                
-                repeater.appendChild(item);
-            });
-        }
-
-        function updateRevealUI() {
-            const count = selectedLightWaves.size;
-            if (count > 0) {
-                document.getElementById('revealSection').classList.remove('hidden');
-                document.getElementById('selectedCount').textContent = `${count} Light Wave${count > 1 ? 's' : ''} selected`;
-                updateFeeEstimate();
-            } else {
-                document.getElementById('revealSection').classList.add('hidden');
-            }
-        }
-
-        async function updateFeeEstimate() {
-            const count = selectedLightWaves.size;
-            
-            if (!currentFeeRates) {
-                await fetchFeeRates();
-            }
-            
-            if (!currentFeeRates) {
-                document.getElementById('totalCost').textContent = 'Unable to calculate fees';
-                return;
-            }
-            
-            const feeRate = currentFeeRates[selectedFeeLevel];
-            const estimatedVBytes = count * 175;
-            const networkFee = Math.ceil(estimatedVBytes * feeRate);
-            const serviceFee = count * 546;
-            const totalCost = networkFee + serviceFee;
-            
-            const btcValue = (totalCost / 100000000).toFixed(8);
-            
-            document.getElementById('totalCost').innerHTML = `
-                Estimated Total: ${totalCost.toLocaleString()} sats<br>
-                <span style="font-size: 16px; color: #999;">(~${btcValue} BTC)</span>
-            `;
-        }
-
-        async function revealSelected() {
-            if (selectedLightWaves.size === 0) return;
-            
-            const revealBtn = document.getElementById('revealBtn');
-            revealBtn.disabled = true;
-            revealBtn.textContent = 'Creating reveal order...';
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/create-reveal`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        lightWaveIds: Array.from(selectedLightWaves),
-                        receiveAddress: connectedWallet.ordinalsAddress,
-                        feeLevel: selectedFeeLevel
-                    })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.details || error.error || 'Failed to create order');
-                }
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    showPaymentModal(data);
-                } else {
-                    throw new Error(data.error || 'Failed to create reveal order');
-                }
-                
-            } catch (error) {
-                showError('Failed to create reveal order: ' + error.message);
-            } finally {
-                revealBtn.disabled = false;
-                revealBtn.textContent = 'Reveal Selected Light Waves';
-            }
-        }
-
-        function showPaymentModal(orderData) {
-            document.getElementById('paymentAmount').textContent = `${orderData.totalAmount} sats`;
-            document.getElementById('paymentAddress').textContent = orderData.paymentAddress;
-            document.getElementById('orderId').textContent = orderData.orderId;
-            document.getElementById('paymentModal').style.display = 'block';
-        }
-
-        function closePaymentModal() {
-            document.getElementById('paymentModal').style.display = 'none';
-            selectedLightWaves.clear();
-            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            updateRevealUI();
-        }
-
-        function copyAddress() {
-            const address = document.getElementById('paymentAddress').textContent;
-            navigator.clipboard.writeText(address);
-            showError('Address copied to clipboard!');
-        }
-
-        function showError(message) {
-            document.getElementById('errorMessage').textContent = message;
-            document.getElementById('errorBox').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('errorBox').classList.add('hidden');
-            }, 5000);
-        }
-    </script>
+    function showError(message) {
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorBox').classList.remove('hidden');
+      setTimeout(() => document.getElementById('errorBox').classList.add('hidden'), 5000);
+    }
+  </script>
 </body>
 </html>
