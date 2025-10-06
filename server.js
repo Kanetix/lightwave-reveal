@@ -7,10 +7,26 @@ const NodeCache = require('node-cache');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Cache for fee rates (updates every 30 seconds)
-const feeCache = new NodeCache({ stdTTL: 30 });
+/* =========================
+   REQUIRED ENV (work-or-fail)
+   ========================= */
+if (!process.env.LW_START_SAT || !process.env.LW_SUPPLY) {
+  console.error('CRITICAL: LW_START_SAT and LW_SUPPLY must be set!');
+  process.exit(1);
+}
+const LW_START_SAT = BigInt(process.env.LW_START_SAT);
+const LW_SUPPLY    = BigInt(process.env.LW_SUPPLY);
+const LW_END_SAT   = LW_START_SAT + LW_SUPPLY - 1n;
 
-// Middleware - CLEANED UP ORIGINS
+if (!process.env.ORDINAL_BOT_API_KEY) {
+  console.error('CRITICAL: ORDINAL_BOT_API_KEY not set!');
+  process.exit(1);
+}
+const ORDINAL_BOT_API_KEY = process.env.ORDINAL_BOT_API_KEY;
+
+/* =========================
+   CORS / Middleware
+   ========================= */
 app.use(cors({
   origin: [
     'https://kanetix.github.io',
@@ -21,347 +37,262 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// CORRECTED: Light Waves base ID (without the 'i' at the end)
-const LIGHTWAVE_BASE_ID = 'dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4e';
-const ORDINAL_BOT_API_KEY = process.env.ORDINAL_BOT_API_KEY;
-const ORDINAL_BOT_API_URL = 'https://api.ordinalsbot.com';
+/* =========================
+   External API clients
+   ========================= */
+const OB = axios.create({
+  baseURL: 'https://api.ordinalsbot.com',
+  headers: { 'x-api-key': ORDINAL_BOT_API_KEY, 'Content-Type': 'application/json' }
+});
 
-// Use standard endpoints for ordinals.com
-const ORDINALS_API_URL = 'https://ordinals.com';
+const HIRO_API_KEY = process.env.HIRO_API_KEY || '';
+const Hiro = axios.create({
+  baseURL: 'https://api.hiro.so/ordinals/v1',
+  headers: Object.assign({ Accept: 'application/json' }, HIRO_API_KEY ? { 'x-api-key': HIRO_API_KEY } : {})
+});
 
-// Helper function to check inscription
-async function checkInscriptionExists(inscriptionId) {
-  try {
-    const response = await axios.get(`${ORDINALS_API_URL}/inscription/${inscriptionId}`);
-    
-    // Parse the HTML response to extract data
-    const html = response.data;
-    
-    // Extract owner address from HTML
-    const addressMatch = html.match(/<a href="\/address\/([^"]+)">/);
-    const address = addressMatch ? addressMatch[1] : null;
-    
-    // Extract sat number
-    const satMatch = html.match(/<a href="\/sat\/(\d+)">/);
-    const sat = satMatch ? satMatch[1] : null;
-    
-    return {
-      id: inscriptionId,
-      address: address,
-      sat: sat,
-      exists: true
-    };
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      return null;
+/* =========================
+   Helpers (Hiro-based)
+   ========================= */
+function inRange(satBig) {
+  return satBig >= LW_START_SAT && satBig <= LW_END_SAT;
+}
+
+// modest concurrency pool
+async function mapPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (true) {
+      if (i >= items.length) break;
+      const idx = i++;
+      out[idx] = await fn(items[idx], idx);
     }
-    console.error(`Error checking inscription ${inscriptionId}:`, error.message);
-    throw error;
-  }
+  });
+  await Promise.all(workers);
+  return out;
 }
 
-// Helper function to get sat info
-async function getSatInfo(satNumber) {
-  try {
-    const response = await axios.get(`${ORDINALS_API_URL}/sat/${satNumber}`);
-    const html = response.data;
-    
-    // Extract inscription IDs from the sat page
-    const inscriptionMatches = html.matchAll(/<a href="\/inscription\/([a-f0-9]{64}i\d+)">/g);
-    const ids = Array.from(inscriptionMatches, m => m[1]);
-    
-    return {
-      sat: satNumber,
-      ids: ids
-    };
-  } catch (error) {
-    console.error(`Error fetching sat info for ${satNumber}:`, error.message);
-    throw error;
-  }
-}
-
-// Check if a Light Wave is revealed (has reinscription)
-async function checkIfRevealed(inscriptionId) {
-  try {
-    const inscription = await checkInscriptionExists(inscriptionId);
-    if (!inscription || !inscription.sat) {
-      return { exists: false, inscriptionId };
-    }
-
-    const satInfo = await getSatInfo(inscription.sat);
-    
-    // Light Wave is revealed if the sat has more than 1 inscription
-    const isRevealed = satInfo.ids && satInfo.ids.length > 1;
-    
-    return {
-      exists: true,
-      revealed: isRevealed,
-      inscriptionId,
-      owner: inscription.address,
-      sat: inscription.sat,
-      inscriptionCount: satInfo.ids ? satInfo.ids.length : 1,
-      inscriptions: satInfo.ids || [inscriptionId]
-    };
-  } catch (error) {
-    console.error(`Error checking reveal status for ${inscriptionId}:`, error.message);
-    throw error; // NO FALLBACK - let it fail
-  }
-}
-
-// Get current fee rates from mempool.space - NO FALLBACK
+/* =========================
+   Fees via mempool.space
+   ========================= */
+const feeCache = new NodeCache({ stdTTL: 30 }); // 30s
 async function getCurrentFeeRates() {
-  // Check cache first
   const cached = feeCache.get('feeRates');
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
-  // Fetch from mempool.space API
-  const response = await axios.get('https://mempool.space/api/v1/fees/recommended');
-  
-  if (!response.data.economyFee || !response.data.hourFee || !response.data.fastestFee) {
+  const { data } = await axios.get('https://mempool.space/api/v1/fees/recommended');
+  if (
+    typeof data.economyFee !== 'number' ||
+    typeof data.hourFee !== 'number' ||
+    typeof data.fastestFee !== 'number'
+  ) {
     throw new Error('Invalid fee data from mempool.space');
   }
-  
+
   const feeRates = {
-    low: response.data.economyFee,
-    medium: response.data.hourFee,
-    high: response.data.fastestFee,
+    low: data.economyFee,
+    medium: data.hourFee,
+    high: data.fastestFee,
     timestamp: Date.now()
   };
-
-  // Cache the rates
   feeCache.set('feeRates', feeRates);
   return feeRates;
 }
 
-// Health check endpoint
+/* =========================
+   Routes
+   ========================= */
+
+// Health
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'Light Waves Reveal API is running',
-    version: '2.0.0',
+    version: '3.0.0',
+    env: {
+      LW_START_SAT: process.env.LW_START_SAT,
+      LW_SUPPLY: process.env.LW_SUPPLY,
+      HIRO_API: true,
+      OB_API: true
+    },
     endpoints: {
-      'POST /api/check-wallet': 'Check wallet for Light Waves',
-      'GET /api/fee-rates': 'Get current fee rates',
-      'POST /api/create-reveal': 'Create reveal order',
-      'GET /api/order-status/:orderId': 'Check order status'
+      'POST /api/check-wallet': 'Classify wallet holdings using Hiro (unrevealed vs revealed)',
+      'GET /api/fee-rates': 'Get current fee rates (mempool.space)',
+      'POST /api/create-reveal': 'Create reinscription order (OrdinalsBot)',
+      'GET /api/order-status/:orderId': 'Check order status (OrdinalsBot)'
     }
   });
 });
 
-// Check wallet for Light Waves
+/**
+ * POST /api/check-wallet
+ * body: { address: string }
+ * returns:
+ * {
+ *   status: 'success',
+ *   unrevealed: [{ id, satOrdinal, revealed:false, label }],
+ *   totals: { owned, inRange, unrevealed }
+ * }
+ *
+ * Stateless logic (Hiro):
+ *  1) list wallet inscriptions (paged)
+ *  2) ensure sat_ordinal for each
+ *  3) filter to [LW_START_SAT, LW_END_SAT]
+ *  4) per unique sat -> /sats/{sat}/inscriptions?limit=1 to get total
+ *  5) unrevealed if total === 1
+ */
 app.post('/api/check-wallet', async (req, res) => {
   try {
-    const { address, startIndex = 0, endIndex = 100 } = req.body;
-    
-    if (!address) {
-      return res.status(400).json({ error: 'Wallet address required' });
+    const { address } = req.body || {};
+    if (!address) return res.status(400).json({ status: 'error', error: 'Wallet address required' });
+
+    // 1) list wallet inscriptions (paged)
+    const perPage = 200;
+    let offset = 0;
+    const owned = [];
+    while (true) {
+      const { data: page } = await Hiro.get('/inscriptions', {
+        params: { address, limit: perPage, offset }
+      });
+      const results = page?.results || [];
+      owned.push(...results);
+      offset += perPage;
+      if (owned.length >= (page?.total || 0)) break;
     }
 
-    console.log(`Checking Light Waves for address: ${address}`);
-    console.log(`Range: ${startIndex} to ${endIndex}`);
-
-    const lightWaves = [];
-    const checkPromises = [];
-    const BATCH_SIZE = 10;
-
-    for (let i = startIndex; i < Math.min(endIndex, 3333); i += BATCH_SIZE) {
-      const batchEnd = Math.min(i + BATCH_SIZE, endIndex);
-      
-      for (let j = i; j < batchEnd; j++) {
-        // CORRECTED FORMAT: base_id + 'i' + number
-        const inscriptionId = `${LIGHTWAVE_BASE_ID}i${j}`;
-        
-        checkPromises.push(
-          checkInscriptionExists(inscriptionId).then(async (inscription) => {
-            if (inscription && inscription.address === address) {
-              const revealStatus = await checkIfRevealed(inscriptionId);
-              return {
-                id: inscriptionId,
-                number: j,
-                revealed: revealStatus.revealed || false,
-                sat: inscription.sat,
-                owner: inscription.address
-              };
-            }
-            return null;
-          }).catch(err => {
-            console.error(`Error checking #${j}:`, err.message);
-            throw err; // NO FALLBACK - let it fail
-          })
-        );
-      }
-      
-      if (checkPromises.length >= BATCH_SIZE) {
-        const batchResults = await Promise.all(checkPromises);
-        const validResults = batchResults.filter(lw => lw !== null);
-        lightWaves.push(...validResults);
-        checkPromises.length = 0;
-        
-        // Small delay between batches
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+    if (owned.length === 0) {
+      return res.json({ status: 'success', unrevealed: [], totals: { owned: 0, inRange: 0, unrevealed: 0 } });
     }
 
-    if (checkPromises.length > 0) {
-      const finalResults = await Promise.all(checkPromises);
-      const validResults = finalResults.filter(lw => lw !== null);
-      lightWaves.push(...validResults);
+    // 2) ensure sat_ordinal for each
+    const withSat = await mapPool(owned, 12, async (ins) => {
+      if (ins.sat_ordinal !== undefined && ins.sat_ordinal !== null) return ins;
+      const { data: full } = await Hiro.get(`/inscriptions/${ins.id}`);
+      return { ...ins, sat_ordinal: full.sat_ordinal };
+    });
+
+    // 3) filter to collection sat range
+    const candidates = withSat
+      .filter((ins) => ins.sat_ordinal !== undefined && ins.sat_ordinal !== null)
+      .map((ins) => ({ ...ins, satBig: BigInt(ins.sat_ordinal) }))
+      .filter((ins) => inRange(ins.satBig));
+
+    if (candidates.length === 0) {
+      return res.json({ status: 'success', unrevealed: [], totals: { owned: owned.length, inRange: 0, unrevealed: 0 } });
     }
 
-    const unrevealed = lightWaves.filter(lw => !lw.revealed);
-    const revealed = lightWaves.filter(lw => lw.revealed);
+    // 4) per unique sat -> get total inscriptions on that sat
+    const uniqueSatStrs = [...new Set(candidates.map((c) => c.satBig.toString()))];
+    const satTotals = await mapPool(uniqueSatStrs, 12, async (satStr) => {
+      const { data } = await Hiro.get(`/sats/${satStr}/inscriptions`, { params: { limit: 1, offset: 0 } });
+      return { satStr, total: data?.total || 0 };
+    });
+    const totalsBySat = new Map(satTotals.map(x => [x.satStr, x.total]));
 
-    console.log(`Found ${lightWaves.length} Light Waves (${unrevealed.length} unrevealed)`);
+    // 5) unrevealed = total === 1
+    const unrevealed = candidates
+      .filter((c) => (totalsBySat.get(c.satBig.toString()) ?? 0) === 1)
+      .map((c) => ({
+        id: c.id,
+        revealed: false,
+        satOrdinal: c.satBig.toString(),
+        label: `Sat ${c.satBig.toString()}`
+      }));
 
-    res.json({
+    return res.json({
       status: 'success',
-      address,
-      lightWaves,
       unrevealed,
-      revealed,
-      unrevealedCount: unrevealed.length,
-      revealedCount: revealed.length,
-      checkedRange: { start: startIndex, end: endIndex }
+      totals: { owned: owned.length, inRange: candidates.length, unrevealed: unrevealed.length }
     });
-
-  } catch (error) {
-    console.error('Error checking wallet:', error);
-    res.status(500).json({ 
-      error: 'Failed to check wallet',
-      details: error.message 
-    });
+  } catch (err) {
+    console.error('Hiro check failure:', err?.response?.status, err?.response?.data || err?.message);
+    // Work-or-fail: no fallback to HTML scraping
+    return res.status(502).json({ status: 'error', error: 'Hiro API failed', details: err?.message || String(err) });
   }
 });
 
-// Create reveal order (reinscription) - CORRECTED FOR ORDINALSBOT API
+/**
+ * POST /api/create-reveal
+ * body: { lightWaveIds: string[], receiveAddress: string, feeLevel: 'low'|'medium'|'high' }
+ * Notes:
+ *  - Keeps your OB flow; you’re reinscribing with a blank text child.
+ */
 app.post('/api/create-reveal', async (req, res) => {
   try {
-    const { lightWaveIds, receiveAddress, feeLevel = 'medium' } = req.body;
-
-    if (!lightWaveIds || !Array.isArray(lightWaveIds) || lightWaveIds.length === 0) {
+    const { lightWaveIds, receiveAddress, feeLevel = 'medium' } = req.body || {};
+    if (!Array.isArray(lightWaveIds) || lightWaveIds.length === 0) {
       return res.status(400).json({ error: 'Light Wave IDs required' });
     }
-
     if (!receiveAddress) {
       return res.status(400).json({ error: 'Receive address required' });
     }
 
-    if (!ORDINAL_BOT_API_KEY) {
-      throw new Error('Server configuration error: API key not set');
-    }
-
-    // Get current fee rates - NO FALLBACK
     const feeRates = await getCurrentFeeRates();
     const feeRate = feeRates[feeLevel];
-    
-    if (!feeRate) {
-      throw new Error(`Invalid fee level: ${feeLevel}`);
-    }
+    if (!feeRate) throw new Error(`Invalid fee level: ${feeLevel}`);
 
-    console.log(`Creating reveal order for ${lightWaveIds.length} Light Waves at ${feeRate} sat/vB`);
-
-    // CORRECTED: Use proper reinscribe endpoint and structure
+    // Your OB payload as provided
     const orderData = {
       inscriptionIds: lightWaveIds,
       fee: feeRate,
-      receiveAddress: receiveAddress,
-      // For reveals, we're adding an empty child inscription
+      receiveAddress,
       reinscribe: true,
       childInscription: {
         contentType: 'text/plain',
-        content: '' // Empty content for reveal
+        content: '' // blank file to reveal
       }
     };
 
-    // Use the reinscribe endpoint
-    const response = await axios.post(
-      `${ORDINAL_BOT_API_URL}/reinscribe`,
-      orderData,
-      {
-        headers: {
-          'x-api-key': ORDINAL_BOT_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    console.log('OrdinalsBot response:', response.data);
-
-    res.json({
+    const { data } = await OB.post('/reinscribe', orderData);
+    return res.json({
       status: 'success',
-      orderId: response.data.id,
-      charge: response.data.charge,
+      orderId: data.id,
+      charge: data.charge,
       inscriptionCount: lightWaveIds.length,
-      feeRate: feeRate,
-      totalAmount: response.data.charge?.amount || 0,
-      paymentAddress: response.data.charge?.address,
-      lightningInvoice: response.data.charge?.lightning?.address
+      feeRate,
+      totalAmount: data.charge?.amount || 0,
+      paymentAddress: data.charge?.address,
+      lightningInvoice: data.charge?.lightning?.address
     });
-
   } catch (error) {
-    console.error('Error creating reveal order:', error.response?.data || error.message);
-    res.status(500).json({ 
+    console.error('OrdinalsBot error:', error?.response?.data || error?.message);
+    return res.status(500).json({
       error: 'Failed to create reveal order',
-      details: error.response?.data?.error || error.message 
+      details: error?.response?.data?.error || error?.message
     });
   }
 });
 
-// Get current fee rates - NO FALLBACK
-app.get('/api/fee-rates', async (req, res) => {
+// Fees
+app.get('/api/fee-rates', async (_req, res) => {
   try {
     const feeRates = await getCurrentFeeRates();
     res.json(feeRates);
   } catch (error) {
-    console.error('Error fetching fee rates:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch fee rates',
-      details: error.message 
-    });
+    console.error('Fee fetch error:', error?.message);
+    res.status(500).json({ error: 'Failed to fetch fee rates', details: error?.message });
   }
 });
 
-// Get order status
+// Order status passthrough
 app.get('/api/order-status/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
-
-    if (!ORDINAL_BOT_API_KEY) {
-      throw new Error('Server configuration error');
-    }
-
-    const response = await axios.get(
-      `${ORDINAL_BOT_API_URL}/order/${orderId}`,
-      {
-        headers: {
-          'x-api-key': ORDINAL_BOT_API_KEY
-        }
-      }
-    );
-
-    res.json({
-      status: 'success',
-      order: response.data
-    });
-
+    const { data } = await OB.get(`/order/${orderId}`);
+    res.json({ status: 'success', order: data });
   } catch (error) {
-    console.error('Error fetching order status:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch order status',
-      details: error.message 
-    });
+    console.error('Order status error:', error?.response?.data || error?.message);
+    res.status(500).json({ error: 'Failed to fetch order status', details: error?.message });
   }
 });
 
-// Start server
+/* =========================
+   Start
+   ========================= */
 app.listen(PORT, () => {
   console.log(`Light Waves Reveal API running on port ${PORT}`);
-  console.log('Environment:', process.env.NODE_ENV);
-  console.log('API Key configured:', !!ORDINAL_BOT_API_KEY);
-  
-  if (!ORDINAL_BOT_API_KEY) {
-    console.error('CRITICAL ERROR: ORDINAL_BOT_API_KEY not set in environment variables!');
-    process.exit(1); // Exit if no API key
-  }
+  console.log('Environment:', process.env.NODE_ENV || 'development');
+  console.log('OB API key configured:', !!ORDINAL_BOT_API_KEY);
+  console.log('Hiro API key configured:', !!HIRO_API_KEY);
+  console.log('Sat range:', process.env.LW_START_SAT, '→', (LW_END_SAT).toString());
 });
