@@ -10,11 +10,9 @@ const PORT = process.env.PORT || 3000;
 /* =========================
    Collection config (IDs)
    ========================= */
-// Base inscription txid (NO trailing 'i')
 const LIGHTWAVE_BASE_ID = process.env.LIGHTWAVE_BASE_ID
   || 'dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4e';
 
-// Max index in your collection (0..LW_MAX_INDEX inclusive)
 const LW_MAX_INDEX = Number(process.env.LW_MAX_INDEX ?? 3332);
 
 /* =========================
@@ -61,7 +59,7 @@ const Hiro = axios.create({
 /* =========================
    Utilities
    ========================= */
-const feeCache = new NodeCache({ stdTTL: 30 }); // 30s mempool cache
+const feeCache = new NodeCache({ stdTTL: 30 });
 
 async function getCurrentFeeRates() {
   const cached = feeCache.get('feeRates');
@@ -84,7 +82,6 @@ async function getCurrentFeeRates() {
   return feeRates;
 }
 
-// Concurrency helper
 async function mapPool(items, limit, fn) {
   const out = new Array(items.length);
   let i = 0;
@@ -99,16 +96,6 @@ async function mapPool(items, limit, fn) {
   return out;
 }
 
-// Does an inscription ID belong to our collection? (base txid + 'i<index>')
-function isOurInscriptionId(id) {
-  const m = /^([a-f0-9]{64})i(\d+)$/.exec(id);
-  if (!m) return false;
-  if (m[1] !== LIGHTWAVE_BASE_ID) return false;
-  const idx = Number(m[2]);
-  return Number.isInteger(idx) && idx >= 0 && idx <= LW_MAX_INDEX;
-}
-
-// Optional: extract index for debugging/telemetry
 function getIndexFromId(id) {
   const m = /^([a-f0-9]{64})i(\d+)$/.exec(id);
   return m ? Number(m[2]) : null;
@@ -118,28 +105,23 @@ function getIndexFromId(id) {
    Routes
    ========================= */
 
-// Health
 app.get('/', (_req, res) => {
   res.json({
     status: 'Light Waves Reveal API is running',
-    version: '3.1.0',
+    version: '3.2.0',
     collection: {
       baseId: LIGHTWAVE_BASE_ID,
       maxIndex: LW_MAX_INDEX
     },
     endpoints: {
-      'POST /api/check-wallet': 'Classify wallet holdings (Hiro) using inscription ID pattern',
-      'GET /api/fee-rates': 'Get current fee rates (mempool.space)',
-      'POST /api/create-reveal': 'Create reinscription order (OrdinalsBot)',
-      'GET /api/order-status/:orderId': 'Check order status (OrdinalsBot)'
+      'POST /api/check-wallet': 'Find Light Waves by inscription ID',
+      'GET /api/fee-rates': 'Get current fee rates',
+      'POST /api/create-reveal': 'Create reinscription order',
+      'GET /api/order-status/:orderId': 'Check order status'
     }
   });
 });
 
-/**
- * POST /api/check-wallet
- * body: { address: string }
- */
 app.post('/api/check-wallet', async (req, res) => {
   try {
     const { address } = req.body || {};
@@ -147,7 +129,6 @@ app.post('/api/check-wallet', async (req, res) => {
 
     console.log(`\n=== CHECKING LIGHT WAVES FOR ${address} ===`);
     
-    // Check each Light Wave inscription ID (0-3332) to see if this address owns it
     const ownedLightWaves = [];
     const batchSize = 50;
     
@@ -160,14 +141,12 @@ app.post('/api/check-wallet', async (req, res) => {
       }
       
       try {
-        // Build query params correctly for multiple IDs
         const params = new URLSearchParams();
         ids.forEach(id => params.append('id', id));
         params.append('limit', '60');
         
         const { data } = await Hiro.get(`/inscriptions?${params.toString()}`);
         
-        // Filter to only ones owned by this address
         const owned = (data.results || []).filter(ins => 
           ins.address === address || ins.genesis_address === address
         );
@@ -176,7 +155,6 @@ app.post('/api/check-wallet', async (req, res) => {
         console.log(`Checked ${start}-${end}: found ${owned.length} owned`);
       } catch (batchError) {
         console.error(`Error checking batch ${start}-${end}:`, batchError.message);
-        // Continue with next batch even if this one fails
       }
     }
 
@@ -190,7 +168,6 @@ app.post('/api/check-wallet', async (req, res) => {
       });
     }
 
-    // Ensure sat_ordinal for each Light Wave
     const withSat = await mapPool(ownedLightWaves, 12, async (ins) => {
       if (ins.sat_ordinal !== undefined && ins.sat_ordinal !== null) return ins;
       
@@ -199,7 +176,7 @@ app.post('/api/check-wallet', async (req, res) => {
         return { ...ins, sat_ordinal: full.sat_ordinal };
       } catch (err) {
         console.error(`Failed to get sat_ordinal for ${ins.id}:`, err.message);
-        return ins; // Return without sat_ordinal
+        return ins;
       }
     });
 
@@ -207,10 +184,8 @@ app.post('/api/check-wallet', async (req, res) => {
     
     console.log(`Light Waves with sat_ordinal: ${withSatClean.length}`);
 
-    // Get unique sat ordinals
     const uniqueSatStrs = [...new Set(withSatClean.map(c => String(c.sat_ordinal)))];
     
-    // Check inscription count on each sat
     const satTotals = await mapPool(uniqueSatStrs, 12, async (satStr) => {
       try {
         const { data } = await Hiro.get(`/sats/${satStr}/inscriptions`, { params: { limit: 1 } });
@@ -223,7 +198,6 @@ app.post('/api/check-wallet', async (req, res) => {
     
     const totalsBySat = new Map(satTotals.map(x => [x.satStr, x.total]));
 
-    // Filter to unrevealed (sat has exactly 1 inscription)
     const unrevealed = withSatClean
       .filter(c => (totalsBySat.get(String(c.sat_ordinal)) ?? 0) === 1)
       .map(c => ({
@@ -252,11 +226,6 @@ app.post('/api/check-wallet', async (req, res) => {
   }
 });
 
-/**
- * POST /api/create-reveal
- * body: { lightWaveIds: string[], receiveAddress: string, feeLevel: 'low'|'medium'|'high' }
- * Reinscribes a blank text child on each target inscription (your reveal mechanism).
- */
 app.post('/api/create-reveal', async (req, res) => {
   try {
     const { lightWaveIds, receiveAddress, feeLevel = 'medium' } = req.body || {};
@@ -299,7 +268,6 @@ app.post('/api/create-reveal', async (req, res) => {
   }
 });
 
-// Fees passthrough
 app.get('/api/fee-rates', async (_req, res) => {
   try {
     const feeRates = await getCurrentFeeRates();
@@ -310,7 +278,6 @@ app.get('/api/fee-rates', async (_req, res) => {
   }
 });
 
-// OB order status
 app.get('/api/order-status/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -329,8 +296,3 @@ app.listen(PORT, () => {
   console.log('Hiro key configured:', !!HIRO_API_KEY);
   console.log('Collection base:', LIGHTWAVE_BASE_ID, ' max index:', LW_MAX_INDEX);
 });
-
-
-
-
-
