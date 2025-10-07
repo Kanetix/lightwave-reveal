@@ -332,10 +332,11 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       setupEventHandlers();
+      // Wait longer for wallet extensions to inject
       setTimeout(() => {
         checkWalletsRepeatedly();
         fetchFeeRates();
-      }, 500);
+      }, 2000);
     });
 
     function checkWalletsRepeatedly() {
@@ -384,12 +385,16 @@
     }
 
     function detectWallets() {
+      console.log('=== detectWallets called ===');
+      
       const wallets = {
         xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
         unisat: !!window.unisat,
         leather: !!window.LeatherProvider,
         magiceden: !!(window.magicEden?.bitcoin && window.magicEden.bitcoin.isMagicEden)
       };
+
+      console.log('Detection results:', wallets);
 
       updateWalletStatus('xverse', wallets.xverse);
       updateWalletStatus('unisat', wallets.unisat);
@@ -400,8 +405,12 @@
     }
 
     function updateWalletStatus(walletName, isDetected) {
+      console.log(`updateWalletStatus(${walletName}, ${isDetected})`);
+      
       const statusEl = document.getElementById(walletName + 'Status');
       const optionEl = document.getElementById(walletName + 'Option');
+
+      console.log(`Elements found: statusEl=${!!statusEl}, optionEl=${!!optionEl}`);
 
       if (!statusEl || !optionEl) return;
 
@@ -586,7 +595,7 @@
         const totalsEl = document.getElementById('totalsLine');
 
         if (data?.totals) {
-          totalsEl.textContent = `Owned: ${data.totals.owned} | In Range: ${data.totals.inRange} | Unrevealed: ${data.totals.unrevealed}`;
+          totalsEl.textContent = `Owned: ${data.totals.owned} | Unrevealed: ${data.totals.unrevealed}`;
           totalsEl.classList.remove('hidden');
         } else {
           totalsEl.classList.add('hidden');
@@ -599,7 +608,6 @@
           document.getElementById('emptyMessage').classList.remove('hidden');
           document.getElementById('lightwavesSection').classList.remove('hidden');
         } else {
-          // sort by sat ordinal ascending for consistency
           unrevealedLightWaves.sort((a, b) => BigInt(a.satOrdinal) > BigInt(b.satOrdinal) ? 1 : -1);
           displayLightWaves(unrevealedLightWaves);
           document.getElementById('lightwavesSection').classList.remove('hidden');
@@ -619,8 +627,8 @@
         item.className = 'lightwave-item';
         item.innerHTML = `
           <input type="checkbox" id="lw-check-${index}" data-id="${lw.id}">
-          <span class="lw-number">${lw.label ? lw.label : ('Sat ' + lw.satOrdinal)}</span>
-          <span class="lw-status">${lw.revealed ? 'REVEALED' : 'UNREVEALED'}</span>
+          <span class="lw-number">${lw.label || ('Sat ' + lw.satOrdinal)}</span>
+          <span class="lw-status">UNREVEALED</span>
         `;
 
         const checkbox = item.querySelector('input');
@@ -659,9 +667,9 @@
       }
 
       const feeRate = currentFeeRates[selectedFeeLevel];
-      const estimatedVBytes = count * 175;      // your model
+      const estimatedVBytes = count * 175;
       const networkFee = Math.ceil(estimatedVBytes * feeRate);
-      const serviceFee = count * 546;           // your postage model
+      const serviceFee = count * 546;
       const totalCost = networkFee + serviceFee;
       const btcValue = (totalCost / 100000000).toFixed(8);
 
@@ -720,8 +728,6 @@
       selectedLightWaves.clear();
       document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
       updateRevealUI();
-      // (Optional) Re-fetch list after payment confirmation if you add a status poll.
-      // loadUnrevealedLightWaves();
     }
 
     function copyAddress() {
