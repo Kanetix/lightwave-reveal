@@ -395,12 +395,12 @@
     console.log('window.magicEden?.bitcoin:', window.magicEden?.bitcoin);
     console.log('window.magicEden?.bitcoin?.isMagicEden:', window.magicEden?.bitcoin?.isMagicEden);
     
-    const wallets = {
-      xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
-      unisat: !!window.unisat,
-      leather: !!window.LeatherProvider,
-      magiceden: !!(window.magicEden?.bitcoin?.isMagicEden)
-    };
+  const wallets = {
+    xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
+    unisat: !!window.unisat,
+    leather: !!window.LeatherProvider,
+    magiceden: !!(window.magicEden?.bitcoin?.isMagicEden)  // ← CHANGED: using optional chaining
+  };
   
     console.log('Detection results:', wallets);
   
