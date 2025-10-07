@@ -61,6 +61,11 @@ const Hiro = axios.create({
    ========================= */
 const feeCache = new NodeCache({ stdTTL: 30 });
 
+// Sleep helper for rate limiting
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function getCurrentFeeRates() {
   const cached = feeCache.get('feeRates');
   if (cached) return cached;
@@ -108,7 +113,7 @@ function getIndexFromId(id) {
 app.get('/', (_req, res) => {
   res.json({
     status: 'Light Waves Reveal API is running',
-    version: '3.2.0',
+    version: '3.3.0',
     collection: {
       baseId: LIGHTWAVE_BASE_ID,
       maxIndex: LW_MAX_INDEX
@@ -132,6 +137,7 @@ app.post('/api/check-wallet', async (req, res) => {
     const ownedLightWaves = [];
     const batchSize = 50;
     
+    // Step 1: Find all Light Waves owned by this address
     for (let start = 0; start <= LW_MAX_INDEX; start += batchSize) {
       const end = Math.min(start + batchSize - 1, LW_MAX_INDEX);
       const ids = [];
@@ -153,6 +159,9 @@ app.post('/api/check-wallet', async (req, res) => {
         
         ownedLightWaves.push(...owned);
         console.log(`Checked ${start}-${end}: found ${owned.length} owned`);
+        
+        // Small delay between batches
+        await sleep(50);
       } catch (batchError) {
         console.error(`Error checking batch ${start}-${end}:`, batchError.message);
       }
@@ -168,11 +177,13 @@ app.post('/api/check-wallet', async (req, res) => {
       });
     }
 
+    // Step 2: Ensure sat_ordinal for each Light Wave
     const withSat = await mapPool(ownedLightWaves, 12, async (ins) => {
       if (ins.sat_ordinal !== undefined && ins.sat_ordinal !== null) return ins;
       
       try {
         const { data: full } = await Hiro.get(`/inscriptions/${ins.id}`);
+        await sleep(50); // Rate limit
         return { ...ins, sat_ordinal: full.sat_ordinal };
       } catch (err) {
         console.error(`Failed to get sat_ordinal for ${ins.id}:`, err.message);
@@ -186,20 +197,36 @@ app.post('/api/check-wallet', async (req, res) => {
 
     const uniqueSatStrs = [...new Set(withSatClean.map(c => String(c.sat_ordinal)))];
     
-    const satTotals = await mapPool(uniqueSatStrs, 12, async (satStr) => {
+    // Step 3: Check inscription count on each sat WITH RATE LIMITING (sequential)
+    console.log(`Checking ${uniqueSatStrs.length} unique sats...`);
+    const satTotals = [];
+    
+    for (const satStr of uniqueSatStrs) {
       try {
         const { data } = await Hiro.get(`/sats/${satStr}/inscriptions`, { params: { limit: 1 } });
-        return { satStr, total: data?.total || 0 };
+        satTotals.push({ satStr, total: data?.total || 0 });
+        
+        // 100ms delay between sat checks to avoid rate limiting
+        await sleep(100);
       } catch (err) {
         console.error(`Failed to check sat ${satStr}:`, err.message);
-        return { satStr, total: 0 };
+        satTotals.push({ satStr, total: 0 });
+        // Even on error, wait before next request
+        await sleep(100);
       }
-    });
+    }
     
     const totalsBySat = new Map(satTotals.map(x => [x.satStr, x.total]));
 
+    // Step 4: Filter to unrevealed (sat has exactly 1 inscription)
     const unrevealed = withSatClean
-      .filter(c => (totalsBySat.get(String(c.sat_ordinal)) ?? 0) === 1)
+      .filter(c => {
+        const count = totalsBySat.get(String(c.sat_ordinal)) ?? 0;
+        if (count === 1) {
+          console.log(`Found unrevealed: ${c.id} (sat: ${c.sat_ordinal})`);
+        }
+        return count === 1;
+      })
       .map(c => ({
         id: c.id,
         revealed: false,
