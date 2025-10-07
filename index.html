@@ -384,6 +384,7 @@
     }
 
     function detectWallets() {
+      console.log('=== detectWallets called ===');
       const wallets = {
         xverse: !!(window.XverseProviders?.BitcoinProvider || window.xverse || window.BitcoinProvider),
         unisat: !!window.unisat,
@@ -399,9 +400,13 @@
       return wallets;
     }
 
-    function updateWalletStatus(walletName, isDetected) {
-      const statusEl = document.getElementById(walletName + 'Status');
-      const optionEl = document.getElementById(walletName + 'Option');
+  function updateWalletStatus(walletName, isDetected) {
+    console.log(`updateWalletStatus(${walletName}, ${isDetected})`);
+    
+    const statusEl = document.getElementById(walletName + 'Status');
+    const optionEl = document.getElementById(walletName + 'Option');
+  
+    console.log(`Elements found: statusEl=${!!statusEl}, optionEl=${!!optionEl}`);
 
       if (!statusEl || !optionEl) return;
 
