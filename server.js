@@ -139,99 +139,116 @@ app.get('/', (_req, res) => {
 /**
  * POST /api/check-wallet
  * body: { address: string }
- *
- * Steps:
- *  1) List wallet inscriptions via Hiro (paged)
- *  2) Keep only IDs matching `${LIGHTWAVE_BASE_ID}i<0..LW_MAX_INDEX>`
- *  3) Ensure sat_ordinal for each (from list or `/inscriptions/{id}`)
- *  4) For each unique sat: `/sats/{sat}/inscriptions?limit=1` → read `total`
- *  5) UNREVEALED if `total === 1`
- */
-/**
- * POST /api/check-wallet
- * body: { address: string }
  */
 app.post('/api/check-wallet', async (req, res) => {
   try {
     const { address } = req.body || {};
     if (!address) return res.status(400).json({ status: 'error', error: 'Wallet address required' });
 
-    // 1) list wallet inscriptions
-    const perPage = 60;
-    let offset = 0;
-    const owned = [];
-    while (true) {
-      const { data: page } = await Hiro.get('/inscriptions', {
-        params: { address, limit: perPage, offset }
-      });
-      const results = page?.results || [];
-      owned.push(...results);
-      offset += perPage;
-      if (owned.length >= (page?.total || 0)) break;
-    }
-
-    // 🔍 CRITICAL DEBUG: Check if any IDs contain your base txid
-    console.log(`\n=== CHECKING ${owned.length} INSCRIPTIONS ===`);
-    const containsBase = owned.filter(ins => 
-      ins.id && ins.id.includes('dd34a6612e0c03dada94ecf3feaca979659585ab0c9cf2e301e7303659712d4e')
-    );
-    console.log(`Found ${containsBase.length} inscriptions containing base txid`);
+    console.log(`\n=== CHECKING LIGHT WAVES FOR ${address} ===`);
     
-    if (containsBase.length > 0) {
-      console.log('First 5 matching IDs:');
-      containsBase.slice(0, 5).forEach(ins => console.log(`  ${ins.id}`));
-    } else {
-      console.log('First 10 IDs in wallet:');
-      owned.slice(0, 10).forEach(ins => console.log(`  ${ins.id}`));
+    // Check each Light Wave inscription ID (0-3332) to see if this address owns it
+    const ownedLightWaves = [];
+    const batchSize = 50;
+    
+    for (let start = 0; start <= LW_MAX_INDEX; start += batchSize) {
+      const end = Math.min(start + batchSize - 1, LW_MAX_INDEX);
+      const ids = [];
+      
+      for (let i = start; i <= end; i++) {
+        ids.push(`${LIGHTWAVE_BASE_ID}i${i}`);
+      }
+      
+      try {
+        // Build query params correctly for multiple IDs
+        const params = new URLSearchParams();
+        ids.forEach(id => params.append('id', id));
+        params.append('limit', '60');
+        
+        const { data } = await Hiro.get(`/inscriptions?${params.toString()}`);
+        
+        // Filter to only ones owned by this address
+        const owned = (data.results || []).filter(ins => 
+          ins.address === address || ins.genesis_address === address
+        );
+        
+        ownedLightWaves.push(...owned);
+        console.log(`Checked ${start}-${end}: found ${owned.length} owned`);
+      } catch (batchError) {
+        console.error(`Error checking batch ${start}-${end}:`, batchError.message);
+        // Continue with next batch even if this one fails
+      }
     }
-    console.log('=====================================\n');
 
-    // 2) filter to our collection by ID pattern
-    const mine = owned.filter(r => r?.id && isOurInscriptionId(r.id));
-    if (mine.length === 0) {
+    console.log(`Total Light Waves owned: ${ownedLightWaves.length}`);
+
+    if (ownedLightWaves.length === 0) {
       return res.json({
         status: 'success',
         unrevealed: [],
-        totals: { owned: owned.length, inRange: 0, unrevealed: 0 }
+        totals: { owned: 0, unrevealed: 0 }
       });
     }
 
-    // 3) ensure sat_ordinal
-    const withSat = await mapPool(mine, 12, async (ins) => {
+    // Ensure sat_ordinal for each Light Wave
+    const withSat = await mapPool(ownedLightWaves, 12, async (ins) => {
       if (ins.sat_ordinal !== undefined && ins.sat_ordinal !== null) return ins;
-      const { data: full } = await Hiro.get(`/inscriptions/${ins.id}`);
-      return { ...ins, sat_ordinal: full.sat_ordinal };
+      
+      try {
+        const { data: full } = await Hiro.get(`/inscriptions/${ins.id}`);
+        return { ...ins, sat_ordinal: full.sat_ordinal };
+      } catch (err) {
+        console.error(`Failed to get sat_ordinal for ${ins.id}:`, err.message);
+        return ins; // Return without sat_ordinal
+      }
     });
 
     const withSatClean = withSat.filter(x => x.sat_ordinal !== undefined && x.sat_ordinal !== null);
+    
+    console.log(`Light Waves with sat_ordinal: ${withSatClean.length}`);
 
-    // 4) unique sat → get total inscription count on that sat
-    const uniqueSatStrs = [...new Set(withSatClean.map(c => String(c.sat_ordinal)))].filter(Boolean);
+    // Get unique sat ordinals
+    const uniqueSatStrs = [...new Set(withSatClean.map(c => String(c.sat_ordinal)))];
+    
+    // Check inscription count on each sat
     const satTotals = await mapPool(uniqueSatStrs, 12, async (satStr) => {
-      const { data } = await Hiro.get(`/sats/${satStr}/inscriptions`, { params: { limit: 1, offset: 0 } });
-      return { satStr, total: data?.total || 0 };
+      try {
+        const { data } = await Hiro.get(`/sats/${satStr}/inscriptions`, { params: { limit: 1 } });
+        return { satStr, total: data?.total || 0 };
+      } catch (err) {
+        console.error(`Failed to check sat ${satStr}:`, err.message);
+        return { satStr, total: 0 };
+      }
     });
+    
     const totalsBySat = new Map(satTotals.map(x => [x.satStr, x.total]));
 
-    // 5) unrevealed = sat has exactly 1 inscription
+    // Filter to unrevealed (sat has exactly 1 inscription)
     const unrevealed = withSatClean
       .filter(c => (totalsBySat.get(String(c.sat_ordinal)) ?? 0) === 1)
       .map(c => ({
         id: c.id,
         revealed: false,
         satOrdinal: String(c.sat_ordinal),
-        label: `Sat ${String(c.sat_ordinal)}`,
+        label: `Light Wave #${getIndexFromId(c.id) + 1}`,
         index: getIndexFromId(c.id)
       }));
+
+    console.log(`Unrevealed Light Waves: ${unrevealed.length}`);
 
     return res.json({
       status: 'success',
       unrevealed,
-      totals: { owned: owned.length, inRange: withSatClean.length, unrevealed: unrevealed.length }
+      totals: { owned: ownedLightWaves.length, unrevealed: unrevealed.length }
     });
+    
   } catch (err) {
-    console.error('Hiro check failure:', err?.response?.status, err?.response?.data || err?.message);
-    return res.status(502).json({ status: 'error', error: 'Hiro API failed', details: err?.message || String(err) });
+    console.error('Check wallet error:', err?.message);
+    return res.status(502).json({ 
+      status: 'error', 
+      error: 'Failed to check wallet',
+      details: err?.message 
+    });
   }
 });
 
@@ -312,6 +329,7 @@ app.listen(PORT, () => {
   console.log('Hiro key configured:', !!HIRO_API_KEY);
   console.log('Collection base:', LIGHTWAVE_BASE_ID, ' max index:', LW_MAX_INDEX);
 });
+
 
 
 
